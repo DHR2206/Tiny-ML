@@ -1,0 +1,36 @@
+# Buddy configuration. Copy to ~/buddy-data/buddy.toml and edit.
+# Only the values you want to change are needed; everything else uses safe defaults.
+
+[child]
+age = 5            # 3..8 - tunes speech tolerance (younger = more forgiving) and quiz start level
+
+[audio]
+volume = 0.7       # starting volume 0..1
+max_volume = 0.85  # parental cap: "louder" never goes above this
+# input_device = "USB"   # part of the microphone's name if the default is wrong (see: python -m buddy doctor)
+# output_device = "USB"
+
+[wake]
+threshold = 0.8    # raise (e.g. 0.85) if Buddy wakes up by mistake, lower if it misses "Hey Buddy"
+
+[asr]
+model = "moonshine-base"   # or "moonshine-tiny" (faster, a little less accurate)
+
+[tts]
+engine = "kokoro"  # "kokoro" = most natural voice; "piper" = much faster to pre-render
+voice = 1          # kokoro speaker: 1 af_bella, 3 af_sarah, 4 af_sky, 7 bf_emma
+speed = 0.9
+
+[parental]
+quiet_hours = ""          # e.g. "21:00-06:30"  (needs a correct clock: add the Pi 5 RTC battery)
+daily_limit_minutes = 0   # 0 = no limit
+
+[hardware]
+mute_button_gpio = 17  # "none" to disable
+led_gpio = 27          # "none" if you have no LED
+
+[paths]
+# sounds = "~/buddy-data/sounds"   # optional CC0 animal recordings: cow.wav, dog.wav, ...
+
+[privacy]
+log_transcripts = false  # keep false; true only while debugging

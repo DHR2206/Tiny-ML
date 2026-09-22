@@ -1,0 +1,50 @@
+{
+  "jokes": [
+    "Why did the banana go to the doctor? Because it was not peeling well! Hee hee!",
+    "What do you call a sleeping dinosaur? A dino-snore! Snore, snore!",
+    "Why do cows wear bells? Because their horns do not work! Moo!",
+    "What is a cat's favourite colour? Purr-ple! Meow!",
+    "Why did the teddy bear say no to dessert? Because he was already stuffed!",
+    "What do you call a fish with no eyes? A fsh! Ha ha!",
+    "Why are frogs so happy? Because they eat whatever bugs them!",
+    "What did the zero say to the eight? Nice belt!",
+    "Why did the cookie cry? Because its mother was a wafer so long!",
+    "What kind of tree fits in your hand? A palm tree!",
+    "How does the moon cut its hair? Eclipse it! Snip snip!",
+    "What do elephants use to talk on the phone? Their trunk line! Pawoo!"
+  ],
+  "riddles": [
+    {"q": "I have a long trunk, big ears, and I am very big. Who am I?", "a": ["elephant"], "say": "An elephant!"},
+    {"q": "I say moo, and I give you milk. Who am I?", "a": ["cow"], "say": "A cow!"},
+    {"q": "I am yellow, I am long, and monkeys love to eat me. What am I?", "a": ["banana"], "say": "A banana!"},
+    {"q": "I shine in the sky during the day, and I keep you warm. What am I?", "a": ["sun"], "say": "The sun!"},
+    {"q": "I have four legs, I wag my tail, and I say woof. Who am I?", "a": ["dog", "doggy", "puppy"], "say": "A dog!"},
+    {"q": "I come after rain, and I have seven colours. What am I?", "a": ["rainbow"], "say": "A rainbow!"},
+    {"q": "I have hands, but I cannot clap. I tell you the time. What am I?", "a": ["clock", "watch"], "say": "A clock!"},
+    {"q": "I am full of water, I fall from clouds. What am I?", "a": ["rain", "raindrop"], "say": "Rain!"},
+    {"q": "I hop, hop, hop, and I say ribbit. Who am I?", "a": ["frog"], "say": "A frog!"},
+    {"q": "You wear me on your feet when you go outside. What am I?", "a": ["shoe", "shoes", "slipper", "chappal"], "say": "Shoes!"}
+  ],
+  "faq": [
+    {"q": ["why is the sky blue", "what color is the sky"], "a": "Sunlight has all the colours of the rainbow in it. When it bumps into the air, the blue light bounces around the most, so the whole sky looks blue!"},
+    {"q": ["why is the grass green", "why are leaves green"], "a": "Leaves and grass have a special green helper inside them that catches sunlight to make food for the plant. That helper is green!"},
+    {"q": ["where does rain come from", "why does it rain"], "a": "The sun warms up water, and it floats up into the sky as tiny drops. They join together to make clouds. When the clouds get too heavy, the water falls down as rain!"},
+    {"q": ["why do we sleep", "why do i have to sleep"], "a": "When we sleep, our body and brain rest and grow. Sleep gives us energy to play and learn tomorrow!"},
+    {"q": ["where does the sun go at night", "where does the sun go"], "a": "The sun does not go anywhere! Our Earth slowly spins around. When our side turns away from the sun, it becomes night for us."},
+    {"q": ["why is the moon changing shape", "why does the moon change"], "a": "The moon does not really change. We see different parts of it lit by the sun, so sometimes it looks round and sometimes like a banana!"},
+    {"q": ["how do birds fly"], "a": "Birds have light bones and strong wings with feathers. They flap their wings to push the air, and up they go!"},
+    {"q": ["why do we brush our teeth", "why should i brush my teeth"], "a": "Brushing cleans away tiny germs and bits of food, so our teeth stay strong and shiny!"},
+    {"q": ["why do we eat vegetables", "why should i eat vegetables"], "a": "Vegetables have vitamins that help us grow tall and strong, and help us fight off coughs and colds!"},
+    {"q": ["what is a rainbow", "how is a rainbow made"], "a": "A rainbow happens when sunlight shines through raindrops. The drops split the light into red, orange, yellow, green, blue, indigo and violet!"},
+    {"q": ["why do cats purr"], "a": "Cats purr when they feel happy and cozy. It is like a cat's way of smiling!"},
+    {"q": ["what do fish eat"], "a": "Fish eat tiny plants, little bugs, and special fish food. Some big fish eat smaller fish."},
+    {"q": ["why do we have to wash our hands", "why wash hands"], "a": "Our hands pick up tiny germs we cannot see. Washing with soap and water sends the germs away, so we stay healthy!"},
+    {"q": ["how big is the sun"], "a": "The sun is very, very big! More than a million Earths could fit inside it. It looks small because it is so far away."},
+    {"q": ["what is the biggest animal", "biggest animal in the world"], "a": "The blue whale is the biggest animal ever. It is longer than two buses!"},
+    {"q": ["what is the fastest animal", "fastest animal"], "a": "The cheetah is the fastest animal on land. It can run as fast as a car on the highway!"},
+    {"q": ["why do stars twinkle", "what are stars"], "a": "Stars are giant suns, very, very far away. They seem to twinkle because their light wiggles as it travels through our air."},
+    {"q": ["where do babies come from"], "a": "That is a lovely question! Babies grow in a special place inside their mummy's tummy. Your family can tell you more about it."},
+    {"q": ["why do we have bones"], "a": "Bones are like a strong frame inside our body. They help us stand, walk, and keep our heart and brain safe."},
+    {"q": ["why is the ocean salty", "why is the sea salty"], "a": "Rivers carry tiny bits of salt from rocks into the sea. The salt stays there, so the sea is salty!"}
+  ]
+}

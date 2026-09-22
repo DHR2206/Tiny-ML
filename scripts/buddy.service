@@ -1,0 +1,18 @@
+[Unit]
+Description=Buddy offline learning companion
+After=sound.target network-pre.target
+Wants=sound.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@APP@
+Environment=PYTHONUNBUFFERED=1
+# Buddy never needs the network at runtime
+ExecStart=@APP@/.venv/bin/python -m buddy run
+Restart=on-failure
+RestartSec=3
+# the user must be in the "audio" and "gpio" groups (default user on Raspberry Pi OS is)
+
+[Install]
+WantedBy=multi-user.target

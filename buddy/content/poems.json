@@ -1,0 +1,33 @@
+{
+  "_note": "Original poems written for Buddy (free to use in this project). Add public-domain rhymes of your own in rhymes_user.json using the same format.",
+  "poems": [
+    {"id": "mango", "title": "Mango Mango", "aliases": ["mango", "mango poem", "mango mango"],
+     "lines": ["Mango, mango, round and sweet,", "yellow and juicy, a summer treat.", "I wash my hands, I take a bite,", "sticky fingers, what a delight!"]},
+    {"id": "raindrops", "title": "Little Raindrops", "aliases": ["rain", "raindrop", "raindrops", "rain poem", "little raindrops"],
+     "lines": ["Pitter, patter, raindrops fall,", "on the roof and on the wall.", "Frogs go hopping, puddles grow,", "after rain, a rainbow glow!"]},
+    {"id": "moon", "title": "Hello Moon", "aliases": ["moon", "hello moon", "moon poem", "chanda"],
+     "lines": ["Hello moon, so round and bright,", "you light the sky up every night.", "The stars all twinkle, one, two, three,", "and you smile down at little me."]},
+    {"id": "sun", "title": "Good Morning Sun", "aliases": ["sun", "sunshine", "good morning sun", "sun poem"],
+     "lines": ["Good morning sun, you're warm and gold,", "you wake the flowers, young and old.", "The birds all sing, the sky is blue,", "a brand new day for me and you!"]},
+    {"id": "elephant", "title": "The Big Grey Elephant", "aliases": ["elephant poem", "big grey elephant", "grey elephant"],
+     "lines": ["The big grey elephant walks so slow,", "swinging his trunk, to and fro.", "He sprays some water, splash, splash, splash,", "then takes a nap, and snores! Crash!"]},
+    {"id": "butterfly", "title": "Butterfly, Butterfly", "aliases": ["butterfly", "butterflies", "butterfly poem"],
+     "lines": ["Butterfly, butterfly, where do you go?", "Up to the flowers, high and low.", "Orange and purple, yellow and blue,", "flutter by, butterfly, I see you!"]},
+    {"id": "ten_fingers", "title": "Ten Little Fingers", "aliases": ["fingers", "ten fingers", "ten little fingers", "my fingers"],
+     "lines": ["I have ten fingers, one, two, three,", "four, five on one hand, look and see!", "Six, seven, eight, nine, ten on the other,", "one hand helps the other, like a brother!"]},
+    {"id": "train", "title": "Choo Choo Train", "aliases": ["train", "choo choo", "choo choo train", "train poem", "rail gadi"],
+     "lines": ["Choo choo, choo choo, here comes the train,", "over the bridge and down the lane.", "Chugging along, it never stops,", "until it reaches the station. Hop!"]},
+    {"id": "clouds", "title": "Fluffy Clouds", "aliases": ["cloud", "clouds", "fluffy clouds", "cloud poem"],
+     "lines": ["Fluffy clouds up in the sky,", "like cotton candy, floating by.", "One looks like a bunny, one like a shoe,", "what shape of cloud can you see too?"]},
+    {"id": "garden", "title": "In My Garden", "aliases": ["garden", "flower", "flowers", "in my garden", "garden poem"],
+     "lines": ["In my garden, seeds are sleeping,", "tiny green shoots are slowly peeping.", "A little water, a little sun,", "and flowers bloom for everyone!"]},
+    {"id": "kite", "title": "My Red Kite", "aliases": ["kite", "red kite", "my red kite", "kite poem", "patang"],
+     "lines": ["My red kite goes up so high,", "dancing, dancing in the sky.", "I hold the string, I run and play,", "the wind helps it fly away, away!"]},
+    {"id": "friends", "title": "Friends Together", "aliases": ["friends", "friend", "friendship", "friends together"],
+     "lines": ["We share our toys, we take our turn,", "we help each other, we laugh, we learn.", "When a friend is sad, we hold their hand,", "being kind is super grand!"]},
+    {"id": "counting_stars", "title": "Counting Stars", "aliases": ["stars", "star", "counting stars", "star poem"],
+     "lines": ["One little star, and then two more,", "three, four, five, and I count some more.", "Six, seven, eight, nine, shining bright,", "ten little stars say good night!"]},
+    {"id": "tummy", "title": "Healthy Tummy", "aliases": ["healthy", "food", "vegetables", "healthy tummy", "food poem"],
+     "lines": ["Carrots crunch and apples too,", "dal and rice are good for you.", "Drink your water, eat your greens,", "you'll grow strong, like a machine!"]}
+  ]
+}

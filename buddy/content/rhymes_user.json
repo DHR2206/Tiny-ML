@@ -1,0 +1,4 @@
+{
+  "_note": "Add public-domain nursery rhymes here yourself (same format as poems.json), then run: python -m buddy build-content. Example entry: {\"id\": \"my_rhyme\", \"title\": \"My Rhyme\", \"aliases\": [\"my rhyme\"], \"lines\": [\"line one\", \"line two\"]}",
+  "poems": []
+}

@@ -1,0 +1,213 @@
+<title>Buddy Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ground:#F2F5F7; --surface:#FFFFFF; --ink:#18222D; --muted:#5A6875; --line:#C9D3DB;
+  --hear:#2B7A9E; --hear-bg:#E3F0F6; --think:#6A4FB3; --think-bg:#EEE9F8; --say:#2E8A5C; --say-bg:#E4F3EA;
+  --crayon:#D98B06; --crayon-bg:#FDF1DA; --private:#B23A48;
+  --display:"Baloo 2", "Nunito Sans", system-ui, sans-serif;
+  --body:"Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#10161C; --surface:#18212A; --ink:#E4EBF1; --muted:#9AA8B5; --line:#33414E;
+    --hear:#6BB8DA; --hear-bg:#15303D; --think:#AE98F0; --think-bg:#272042; --say:#6FCB9A; --say-bg:#153325;
+    --crayon:#F2B33D; --crayon-bg:#3A2D10; --private:#F07A87;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#10161C; --surface:#18212A; --ink:#E4EBF1; --muted:#9AA8B5; --line:#33414E;
+  --hear:#6BB8DA; --hear-bg:#15303D; --think:#AE98F0; --think-bg:#272042; --say:#6FCB9A; --say-bg:#153325;
+  --crayon:#F2B33D; --crayon-bg:#3A2D10; --private:#F07A87;
+}
+body{background:var(--ground);color:var(--ink);font:16px/1.6 var(--body);}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:32px 56px;display:grid;gap:40px}
+header{display:grid;gap:10px;max-width:70ch}
+.eyebrow{font:600 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:700 clamp(34px,5vw,52px)/1.05 var(--display);margin:0;text-wrap:balance}
+h1 .say{color:var(--crayon)}
+h2{font:700 26px/1.2 var(--display);margin:0 0 12px;text-wrap:balance}
+p{margin:0}
+.lede{font-size:18px;color:var(--muted)}
+.utter{font:600 15px/1.4 var(--mono);background:var(--crayon-bg);color:var(--ink);padding:10px 14px;border-radius:10px;justify-self:start;border:1px dashed var(--crayon)}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;overflow-x:auto}
+.diagram svg{display:block;min-width:900px;width:100%;height:auto}
+svg text{font-family:var(--body)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:10px;font-size:14px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+.claims{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.claim{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:8px;align-content:start}
+.claim .tag{font:600 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--crayon)}
+.claim h3{font:700 20px/1.25 var(--display);margin:0}
+.claim p{color:var(--muted);font-size:15px}
+.claim code{font:13px var(--mono);color:var(--ink)}
+.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+.bar{display:inline-block;height:10px;border-radius:5px;background:var(--line);vertical-align:middle;margin-right:8px}
+.bar.best{background:var(--crayon)}
+.note{font-size:14px;color:var(--muted);margin-top:10px;max-width:75ch}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;align-items:start}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Offline learning companion · Raspberry Pi 5 · ages 3–8</div>
+    <h1>How Buddy hears, thinks and <span class="say">answers</span></h1>
+    <p class="lede">Everything below runs on the Pi. No internet, no cloud and no recordings. Each open-source model does one job, and three design choices make Buddy fit small children.</p>
+    <div class="utter">"Hey Buddy, what does the wion say?"  →  "The lion says… Roooaar!"</div>
+  </header>
+
+  <section>
+    <h2>The voice pipeline</h2>
+    <div class="diagram" role="img" aria-label="Pipeline diagram: microphone, RAM buffer, voice activity detection, Moonshine speech recognition, wake phrase check, dialogue manager, child-phonology intent matcher, skills, pre-rendered speech cache, speaker; with mute button, learning store and parental gate.">
+      <svg viewBox="0 0 1000 520" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker>
+        </defs>
+        <text x="20" y="38" font-size="13" font-weight="700" fill="var(--hear)" letter-spacing="1.5">1 · HEAR</text>
+        <text x="20" y="208" font-size="13" font-weight="700" fill="var(--think)" letter-spacing="1.5">2 · UNDERSTAND</text>
+        <text x="20" y="378" font-size="13" font-weight="700" fill="var(--say)" letter-spacing="1.5">3 · ANSWER</text>
+        <g font-size="13">
+          <rect x="20" y="55" width="130" height="80" rx="12" fill="var(--hear-bg)" stroke="var(--hear)"/>
+          <text x="85" y="88" text-anchor="middle" font-weight="700" fill="var(--ink)">Microphone</text>
+          <text x="85" y="107" text-anchor="middle" font-size="11.5" fill="var(--muted)">USB · any rate</text>
+          <rect x="175" y="55" width="190" height="80" rx="12" fill="var(--hear-bg)" stroke="var(--private)" stroke-dasharray="5 4"/>
+          <text x="270" y="88" text-anchor="middle" font-weight="700" fill="var(--ink)">RAM-only buffer</text>
+          <text x="270" y="107" text-anchor="middle" font-size="11.5" fill="var(--private)">wiped after use, never on disk</text>
+          <rect x="390" y="55" width="135" height="80" rx="12" fill="var(--hear-bg)" stroke="var(--hear)"/>
+          <text x="457" y="88" text-anchor="middle" font-weight="700" fill="var(--ink)">Silero VAD</text>
+          <text x="457" y="107" text-anchor="middle" font-size="11.5" fill="var(--muted)">cuts one utterance</text>
+          <rect x="550" y="55" width="175" height="80" rx="12" fill="var(--hear-bg)" stroke="var(--hear)"/>
+          <text x="637" y="88" text-anchor="middle" font-weight="700" fill="var(--ink)">Moonshine ASR</text>
+          <text x="637" y="107" text-anchor="middle" font-size="11.5" fill="var(--muted)">speech → text, ~110 ms</text>
+          <rect x="750" y="55" width="230" height="80" rx="12" fill="var(--crayon-bg)" stroke="var(--crayon)" stroke-width="2"/>
+          <text x="865" y="84" text-anchor="middle" font-weight="700" fill="var(--ink)">Wake phrase check</text>
+          <text x="865" y="103" text-anchor="middle" font-size="11.5" fill="var(--muted)">"Hey Buddy …" compared as sounds</text>
+          <text x="865" y="120" text-anchor="middle" font-size="11.5" fill="var(--muted)">weak match must be a command</text>
+        </g>
+        <g stroke="var(--muted)" stroke-width="1.6" fill="none" marker-end="url(#ar)">
+          <path d="M150 95 H171"/><path d="M365 95 H386"/><path d="M525 95 H546"/><path d="M725 95 H746"/>
+          <path d="M865 135 V221"/>
+        </g>
+        <g font-size="13">
+          <rect x="700" y="225" width="280" height="100" rx="12" fill="var(--think-bg)" stroke="var(--think)"/>
+          <text x="840" y="252" text-anchor="middle" font-weight="700" fill="var(--ink)">Dialogue manager</text>
+          <text x="840" y="271" text-anchor="middle" font-size="11.5" fill="var(--muted)">quiz answers need no wake phrase</text>
+          <text x="840" y="289" text-anchor="middle" font-size="11.5" fill="var(--muted)">stop · louder · softer · say it again</text>
+          <text x="840" y="307" text-anchor="middle" font-size="11.5" fill="var(--muted)">parental gate: quiet hours, daily limit</text>
+          <rect x="360" y="225" width="300" height="100" rx="12" fill="var(--crayon-bg)" stroke="var(--crayon)" stroke-width="2"/>
+          <text x="510" y="257" text-anchor="middle" font-weight="700" fill="var(--ink)">Child-phonology intent matcher</text>
+          <text x="510" y="277" text-anchor="middle" font-size="11.5" fill="var(--muted)">age-scheduled sound-change costs</text>
+          <text x="510" y="297" text-anchor="middle" font-size="11.5" font-family="var(--mono)" fill="var(--muted)">wion→lion · tount→count</text>
+          <rect x="20" y="225" width="300" height="100" rx="12" fill="var(--think-bg)" stroke="var(--think)"/>
+          <text x="170" y="257" text-anchor="middle" font-weight="700" fill="var(--ink)">Skills</text>
+          <text x="170" y="277" text-anchor="middle" font-size="11.5" fill="var(--muted)">stories · poems · ABC · phonics · counting</text>
+          <text x="170" y="297" text-anchor="middle" font-size="11.5" fill="var(--muted)">animals · lessons · quiz · feelings · FAQ</text>
+        </g>
+        <g stroke="var(--muted)" stroke-width="1.6" fill="none" marker-end="url(#ar)">
+          <path d="M700 275 H664"/><path d="M360 275 H324"/><path d="M110 325 V391"/>
+        </g>
+        <path d="M250 325 V352 H870 V391" stroke="var(--think)" stroke-width="1.4" stroke-dasharray="4 4" fill="none" marker-end="url(#ar)"/>
+        <text x="560" y="346" font-size="11.5" fill="var(--think)">quiz results</text>
+        <g font-size="13">
+          <rect x="20" y="395" width="300" height="95" rx="12" fill="var(--crayon-bg)" stroke="var(--crayon)" stroke-width="2"/>
+          <text x="170" y="425" text-anchor="middle" font-weight="700" fill="var(--ink)">Pre-rendered speech cache</text>
+          <text x="170" y="445" text-anchor="middle" font-size="11.5" fill="var(--muted)">~2,450 sentences voiced once at setup</text>
+          <text x="170" y="463" text-anchor="middle" font-size="11.5" fill="var(--muted)">Kokoro / Piper, no TTS wait at runtime</text>
+          <rect x="355" y="395" width="160" height="95" rx="12" fill="var(--say-bg)" stroke="var(--say)"/>
+          <text x="435" y="433" text-anchor="middle" font-weight="700" fill="var(--ink)">Renderer</text>
+          <text x="435" y="452" text-anchor="middle" font-size="11.5" fill="var(--muted)">speech + chimes</text>
+          <rect x="550" y="395" width="150" height="95" rx="12" fill="var(--say-bg)" stroke="var(--say)"/>
+          <text x="625" y="433" text-anchor="middle" font-weight="700" fill="var(--ink)">Speaker</text>
+          <text x="625" y="452" text-anchor="middle" font-size="11.5" fill="var(--muted)">volume capped</text>
+          <rect x="760" y="395" width="220" height="95" rx="12" fill="var(--think-bg)" stroke="var(--think)"/>
+          <text x="870" y="425" text-anchor="middle" font-weight="700" fill="var(--ink)">Learning store</text>
+          <text x="870" y="445" text-anchor="middle" font-size="11.5" fill="var(--muted)">SQLite: item id + right/wrong</text>
+          <text x="870" y="463" text-anchor="middle" font-size="11.5" fill="var(--muted)">level 1–5 per topic</text>
+        </g>
+        <g stroke="var(--muted)" stroke-width="1.6" fill="none" marker-end="url(#ar)">
+          <path d="M320 442 H351"/><path d="M515 442 H546"/>
+        </g>
+        <g font-size="11.5">
+          <rect x="175" y="152" width="190" height="44" rx="22" fill="var(--surface)" stroke="var(--private)"/>
+          <text x="270" y="170" text-anchor="middle" font-weight="700" fill="var(--private)">Mute button (GPIO17)</text>
+          <text x="270" y="186" text-anchor="middle" fill="var(--muted)">closes the mic, LED on</text>
+          <path d="M270 152 V139" stroke="var(--private)" stroke-width="1.6" fill="none" marker-end="url(#ar)"/>
+        </g>
+        <path d="M680 395 V360 M680 345 V330 M680 222 V139" stroke="var(--hear)" stroke-width="1.3" stroke-dasharray="3 5" fill="none" marker-end="url(#ar)"/>
+        <text x="560" y="190" font-size="11.5" fill="var(--hear)">"Hey Buddy, stop!" while talking</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--crayon)"></i>patent-relevant design choices</span>
+      <span><i class="sw" style="background:var(--private)"></i>privacy boundary</span>
+      <span><i class="sw" style="background:var(--hear)"></i>listening</span>
+      <span><i class="sw" style="background:var(--think)"></i>understanding and learning</span>
+      <span><i class="sw" style="background:var(--say)"></i>answering</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Three ideas worth protecting</h2>
+    <div class="claims">
+      <article class="claim">
+        <div class="tag">Idea 1 · understanding</div>
+        <h3>Matching that grows up with the child</h3>
+        <p>Words are compared as sounds. Changes a child of this age still makes (k→t, r/l→w, dropped end sounds) cost little. Each process stops being tolerated at the age speech-therapy norms say it fades.</p>
+        <p><code>tat → cat (age 3.5 ✓, age 8 ✗)</code></p>
+      </article>
+      <article class="claim">
+        <div class="tag">Idea 2 · learning</div>
+        <h3>Quizzes that stay "just hard enough"</h3>
+        <p>Each item moves between five Leitner boxes. Each topic has a level from 1 to 5 that rises when the last four answers were at least 75 % right, and falls when they were 25 % or less. A wrong answer first gets a hint; a second wrong answer gets the answer, told kindly.</p>
+      </article>
+      <article class="claim">
+        <div class="tag">Idea 3 · privacy</div>
+        <h3>Nothing leaves, nothing stays</h3>
+        <p>A closed set of sentences is voiced once at setup, so there's no cloud and no speech engine running while the child waits. Audio stays in RAM and is wiped. The learning store holds item IDs only. The mute button closes the microphone stream.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="two">
+    <div>
+      <h2>Open-source parts</h2>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Job</th><th>Model</th><th>Licence</th></tr></thead>
+          <tbody>
+            <tr><td>Runtime</td><td>sherpa-onnx</td><td>Apache-2.0</td></tr>
+            <tr><td>Speech → text</td><td>Moonshine v2 base (EN)</td><td>MIT</td></tr>
+            <tr><td>Voice detection</td><td>Silero VAD</td><td>MIT</td></tr>
+            <tr><td>Voice</td><td>Kokoro-82M int8</td><td>Apache-2.0</td></tr>
+            <tr><td>Fast voice</td><td>Piper LJSpeech</td><td>MIT · public-domain data</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h2>Measured so far</h2>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Child-like commands, audio → intent</th><th>Correct</th></tr></thead>
+          <tbody>
+            <tr><td>Exact keywords</td><td><span class="bar" style="width:25px"></span>25 %</td></tr>
+            <tr><td>Fixed phonetic matching</td><td><span class="bar" style="width:38px"></span>38 %</td></tr>
+            <tr><td><strong>Age-scheduled (Buddy)</strong></td><td><span class="bar best" style="width:62px"></span><strong>62 %</strong></td></tr>
+            <tr><td>Clean commands</td><td><span class="bar best" style="width:100px"></span>20 / 20</td></tr>
+            <tr><td>Wake phrase found / false wake-ups</td><td>36 / 36 · 0 of 19</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Test audio was synthetic "child-like" speech (higher pitch, mispronounced words, background noise), run on a 2-core build machine. Re-measure with real children's recordings, with parental consent, before filing.</p>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,54 @@
+{
+  "letters": [
+    {"l": "a", "sound": "ah", "word": "apple"}, {"l": "b", "sound": "buh", "word": "ball"},
+    {"l": "c", "sound": "kuh", "word": "cat"}, {"l": "d", "sound": "duh", "word": "dog"},
+    {"l": "e", "sound": "eh", "word": "egg"}, {"l": "f", "sound": "fff", "word": "fish"},
+    {"l": "g", "sound": "guh", "word": "goat"}, {"l": "h", "sound": "hhh", "word": "hat"},
+    {"l": "i", "sound": "ih", "word": "igloo"}, {"l": "j", "sound": "juh", "word": "jug"},
+    {"l": "k", "sound": "kuh", "word": "kite"}, {"l": "l", "sound": "lll", "word": "lion"},
+    {"l": "m", "sound": "mmm", "word": "mango"}, {"l": "n", "sound": "nnn", "word": "nest"},
+    {"l": "o", "sound": "oh", "word": "orange"}, {"l": "p", "sound": "puh", "word": "parrot"},
+    {"l": "q", "sound": "kwuh", "word": "queen"}, {"l": "r", "sound": "rrr", "word": "rabbit"},
+    {"l": "s", "sound": "sss", "word": "sun"}, {"l": "t", "sound": "tuh", "word": "tiger"},
+    {"l": "u", "sound": "uh", "word": "umbrella"}, {"l": "v", "sound": "vvv", "word": "van"},
+    {"l": "w", "sound": "wuh", "word": "watch"}, {"l": "x", "sound": "ks", "word": "fox", "note": "x is at the end of fox"},
+    {"l": "y", "sound": "yuh", "word": "yak"}, {"l": "z", "sound": "zzz", "word": "zebra"}
+  ],
+  "colors": [
+    {"name": "red", "things": ["an apple", "a tomato", "a fire engine"]},
+    {"name": "blue", "things": ["the sky", "the sea", "a peacock's neck"]},
+    {"name": "yellow", "things": ["a banana", "the sun", "a sunflower"]},
+    {"name": "green", "things": ["the grass", "a leaf", "a parrot"]},
+    {"name": "orange", "things": ["an orange", "a carrot", "a pumpkin"]},
+    {"name": "purple", "things": ["a brinjal", "grapes", "a plum"]},
+    {"name": "pink", "things": ["a lotus flower", "a flamingo", "candy floss"]},
+    {"name": "white", "things": ["milk", "snow", "a cloud"]},
+    {"name": "black", "things": ["a crow", "the night sky", "an elephant's toe nails"]},
+    {"name": "brown", "things": ["a tree trunk", "chocolate", "a coconut"]}
+  ],
+  "shapes": [
+    {"name": "circle", "sides": 0, "desc": "A circle is round and has no corners, like a ball or a roti."},
+    {"name": "square", "sides": 4, "desc": "A square has four sides, all the same size, like a window or a cracker."},
+    {"name": "triangle", "sides": 3, "desc": "A triangle has three sides and three corners, like a slice of pizza or a samosa."},
+    {"name": "rectangle", "sides": 4, "desc": "A rectangle has four sides, two long and two short, like a door or a book."},
+    {"name": "star", "sides": 10, "desc": "A star shape has five points, like the stars we draw in the sky."},
+    {"name": "heart", "sides": 0, "desc": "A heart shape means love. We draw it on cards for people we love."},
+    {"name": "oval", "sides": 0, "desc": "An oval is like a stretched circle, like an egg."},
+    {"name": "diamond", "sides": 4, "desc": "A diamond looks like a square standing on its corner, like a kite."}
+  ],
+  "body_parts": [
+    {"name": "eyes", "use": "We see with our eyes."}, {"name": "ears", "use": "We hear with our ears."},
+    {"name": "nose", "use": "We smell with our nose."}, {"name": "mouth", "use": "We eat and talk with our mouth."},
+    {"name": "hands", "use": "We hold and clap with our hands."}, {"name": "legs", "use": "We walk and run with our legs."},
+    {"name": "feet", "use": "We stand and jump on our feet."}, {"name": "teeth", "use": "We chew our food with our teeth."},
+    {"name": "tongue", "use": "We taste sweet and sour with our tongue."}, {"name": "head", "use": "Our head keeps our brain safe, and we think with our brain."}
+  ],
+  "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+  "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  "opposites": [["big", "small"], ["hot", "cold"], ["up", "down"], ["day", "night"], ["happy", "sad"],
+                ["fast", "slow"], ["open", "close"], ["tall", "short"], ["wet", "dry"], ["loud", "quiet"],
+                ["in", "out"], ["full", "empty"], ["old", "new"], ["hard", "soft"], ["light", "dark"]],
+  "fruit_colors": [["banana", "yellow"], ["apple", "red"], ["grass", "green"], ["sky", "blue"],
+                   ["orange", "orange"], ["milk", "white"], ["crow", "black"], ["carrot", "orange"],
+                   ["grapes", "purple"], ["leaf", "green"], ["tomato", "red"], ["chocolate", "brown"]]
+}
