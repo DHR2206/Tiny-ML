@@ -16,7 +16,8 @@ from buddy.config import Config
 from buddy.learning.progress import Progress
 
 MODELS = Path.home() / "buddy-data" / "models"
-HAVE = (MODELS / "silero_vad.onnx").exists()
+HAVE = (MODELS / "silero_vad.onnx").exists() and (MODELS / "vits-piper-en_US-ljspeech-medium").exists()
+ASR = "moonshine-base" if (MODELS / "sherpa-onnx-moonshine-base-en-quantized-2026-02-27").exists() else "moonshine-tiny"
 
 
 class FakeMic:
@@ -81,7 +82,7 @@ class TestEngineAudio(unittest.TestCase):
             cache = SpeechCache(Path(d), "piper-test", 48000, lambda t: tts.synth(t, 0, 1.0))
             brain = Brain(cfg, rng=random.Random(0), progress=Progress(None))
             spk = FakeSpeaker()
-            eng = Engine(cfg, brain, FakeMic(mic_audio), spk, Recognizer(MODELS, "moonshine-base", 2),
+            eng = Engine(cfg, brain, FakeMic(mic_audio), spk, Recognizer(MODELS, ASR, 2),
                          Vad(MODELS), cache)
             heard = []
             orig = eng.on_text
@@ -93,6 +94,9 @@ class TestEngineAudio(unittest.TestCase):
                 for seg in eng.vad.accept(blk):
                     eng.on_text(eng.asr.transcribe(seg))
                 eng._timers()
+            while eng.player.active and time.time() - t0 < 60:  # Buddy speaks sentence by sentence
+                eng._timers()
+                time.sleep(0.01)
             self.assertTrue(heard, "nothing recognised")
             self.assertIn("cow", heard[0].lower())
             self.assertTrue(spk.out, "Buddy did not answer")

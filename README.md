@@ -4,12 +4,19 @@ An Alexa-style assistant built for small children. It runs **100 % offline** on 
 uses **only open-source models**, and keeps **no recordings**.
 
 ```
-"Hey Buddy, what does the cow say?"
-  mic → Silero VAD → Moonshine speech-to-text → wake phrase + child-speech-tolerant intent matching
-      → skill (stories, poems, alphabet, phonics, counting, animals, quizzes …) → pre-rendered voice → speaker
+"Hey Buddy, what does the cow say?"  …  "Now count from 5 to 15!"  (no "Hey Buddy" needed while Buddy listens)
+  mic → Silero VAD → Moonshine speech-to-text → wake phrase / conversation window
+      → child-speech-tolerant intent matching + parameter extraction (numbers, ranges, topics …)
+      → skill (stories, poems, alphabet, phonics, counting, animals, quizzes …)
+      → pre-rendered voice, played sentence by sentence (pause / continue / repeat) → speaker
 ```
 
-- **Setup & build guide:** [docs/SETUP.md](docs/SETUP.md)
+**Talking to Buddy:** say "Hey Buddy" once. After each answer a soft chime means Buddy is still listening for
+15 seconds, so the child just says the next thing. While Buddy talks: "Hey Buddy, pause / stop / repeat / quit".
+"Continue" resumes a paused story from the interrupted sentence (up to 3 minutes later).
+
+- **Try it on your own PC first (Windows / Mac / Linux):** [docs/RUN_ON_PC.md](docs/RUN_ON_PC.md)
+- **Setup & build guide (Raspberry Pi):** [docs/SETUP.md](docs/SETUP.md)
 - **Things to do yourself on the Pi:** [docs/MANUAL_STEPS.md](docs/MANUAL_STEPS.md)
 - **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
@@ -40,12 +47,16 @@ python -m buddy run
 ```
 buddy/
   nlu/phonetics.py   age-scheduled child-phonology phonetic distance   (core invention 1)
-  nlu/matcher.py     closed-vocabulary intent + slot recognition
+  nlu/matcher.py     closed-vocabulary intent recognition: two-pass word snapping + scored intents
+  nlu/slots.py       shared parameter extraction: numbers, ranges, steps, direction, sums
+  nlu/common_words.py everyday words that are never snapped onto Buddy's keywords
+  nlu/fallback.py    optional hook for a future intent classifier (none configured)
   speech/wake.py     transcript-level wake phrase detection with command validation
   speech/cache.py    pre-synthesised closed-domain speech inventory
   learning/          adaptive quiz: Leitner boxes + per-topic level        (core invention 2)
-  brain.py           dialogue manager (answers without wake word, repeat, parental rules)
-  engine.py          real-time loop, barge-in, echo guard, mute             (core invention 3: privacy)
+  brain.py           dialogue manager (follow-up requests, quiz answers, repeat, parental rules)
+  playback.py        sentence-by-sentence player (pause / continue / repeat position)
+  engine.py          real-time loop, conversation session, barge-in, echo guard, mute (core invention 3: privacy)
   skills/handlers.py all activities
   content/*.json     stories, poems, animals, lessons, jokes, FAQ, phrases (editable)
 tests/               unit + end-to-end tests
@@ -61,7 +72,8 @@ scripts/             installer, model download, systemd service, audio evaluatio
 | Clean commands, end to end (audio → intent) | 20 / 20 |
 | Child-pronunciation commands ("pway a towy", "wion sound", "tount to ten" …) | **62 %** with age-scheduled matching vs 38 % uniform phonetic vs 25 % exact keywords |
 | Speech-to-text time | about 110 ms for a 1.4 s command (Moonshine base) |
-| Unit tests (99 clean + 16 child-variant text commands) | 100 % |
+| Unit tests (99 clean + 16 child-variant + 85 natural-variation text commands) | 100 % |
+| Conversation-flow tests (follow-up, pause/continue, repeat, quit, barge-in; fake audio devices) | 23 / 23 |
 
 The child-like audio was synthesised (higher pitch, mispronounced spellings, background noise).
 **Re-measure with real children's recordings, with parental consent, before filing.**

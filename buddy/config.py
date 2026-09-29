@@ -37,6 +37,13 @@ DEFAULTS: dict[str, Any] = {
         "threshold": 0.8,
         "listen_seconds": 7.0,  # how long to wait for a command after "Hey Buddy"
     },
+    "session": {
+        # Conversation mode: after each task Buddy keeps listening, so "Hey Buddy" is only needed to wake it.
+        "follow_up_seconds": 15.0,  # listening window after each task (0 = old behaviour: wake phrase every time)
+        "prompt_every": 2,  # short "What next?" line after every Nth task (a soft chime after every task)
+        "pause_memory_seconds": 180.0,  # "continue" works this long after "pause"
+        "barge_in_window": 4.0,  # "Hey Buddy" heard while Buddy talks: seconds to say pause / stop / repeat / quit
+    },
     "asr": {
         "model": "moonshine-base",  # moonshine-base | moonshine-tiny
         "threads": 3,
@@ -57,6 +64,7 @@ DEFAULTS: dict[str, Any] = {
     "nlu": {
         "min_confidence": 0.55,
         "answer_window": 9.0,  # seconds to answer a quiz question without the wake word
+        "fallback": "none",  # optional extra intent classifier (nlu/fallback.py); none available yet
     },
     "parental": {
         "quiet_hours": "",  # e.g. "21:00-06:30" (needs a correct clock / RTC battery)
@@ -65,7 +73,9 @@ DEFAULTS: dict[str, Any] = {
     "hardware": {
         "mute_button_gpio": 17,  # BCM pin; button to GND. None disables
         "led_gpio": 27,  # optional LED (+330 ohm) BCM pin; None disables
-        "keyboard": True,  # 'm' = mute toggle, 't' = talk (simulated wake), 'q' = quit
+        # keyboard helper: m = mute, t = talk (as "Hey Buddy"), p = pause/continue, r = repeat,
+        # x = end the conversation, q = quit the program
+        "keyboard": True,
     },
     "privacy": {
         "log_transcripts": False,  # never log what the child says unless debugging

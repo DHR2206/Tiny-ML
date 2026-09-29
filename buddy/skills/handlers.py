@@ -17,6 +17,9 @@ from ..nlu.normalize import normalize, number_to_words
 
 QUIZ_LEN = 5
 MAX_COUNT = 100
+MAX_STEP = 10  # "count by threes" ... "count in tens"
+MAX_SUM = 20  # sums and take-aways with numbers up to twenty
+MAX_TABLE = 12  # times tables one to twelve
 
 
 def dot(s: str) -> str:
@@ -36,13 +39,20 @@ class Skills:
         self.bank = build_bank(content)
         self.picker = QuizPicker(self.bank, progress, self.rng)
         self.unknown_streak = 0
+        self._last_pick: dict[str, str] = {}
         self.handlers: dict[str, Callable[[Intent], Response]] = {
             name[3:]: getattr(self, name) for name in dir(self) if name.startswith("do_")
         }
 
     # ------------------------------------------------------------- utilities
     def p(self, key: str) -> str:
-        return self.rng.choice(self.c.phrases[key])
+        """A wording for `key`, never the same one twice in a row when there are several."""
+        opts = self.c.phrases[key]
+        if len(opts) > 1 and self._last_pick.get(key) in opts:
+            opts = [o for o in opts if o != self._last_pick[key]]
+        pick = self.rng.choice(opts)
+        self._last_pick[key] = pick
+        return pick
 
     def handle(self, intent: Intent) -> Response:
         fn = self.handlers.get(intent.name, self.do_unknown)
@@ -54,7 +64,19 @@ class Skills:
 
     # ------------------------------------------------------------- controls
     def do_stop(self, i: Intent) -> Response:
-        return Response([Say(self.p("stop"))], action="stop", repeatable=False)
+        return Response([Say(self.p("stop"))], action="stop", repeatable=False, after="silent")
+
+    def do_pause(self, i: Intent) -> Response:
+        # the engine pauses the reply that is playing and remembers where (see engine.py)
+        word = "pause" if "pause" in i.tokens else "wait"  # "wait" with nothing playing = "give me a moment"
+        return Response([], action="pause", repeatable=False, after="silent", meta={"word": word})
+
+    def do_continue(self, i: Intent) -> Response:
+        return Response([], action="continue", repeatable=False, after="silent")
+
+    def do_quit(self, i: Intent) -> Response:
+        # ends the conversation (Buddy goes back to sleep); the program keeps running
+        return Response([Say(self.p("quit"))], action="quit", repeatable=False, after="sleep")
 
     def do_volume_up(self, i: Intent) -> Response:
         return Response([], action="volume_up", repeatable=False)
@@ -72,10 +94,33 @@ class Skills:
         return Response([Say(self.p("help"))])
 
     # ------------------------------------------------------------- stories & poems
+    def _pick(self, items: list[dict], i: Intent, text_key: str) -> tuple[dict, bool]:
+        """Item by id, else one about the requested topic, else a random one.
+        Returns (item, topic_missing) - topic_missing when a topic was asked for but not found."""
+        wanted = i.slots.get("id")
+        item = next((x for x in items if x["id"] == wanted), None)
+        if item:
+            return item, False
+        topic = [t[:-1] if t.endswith("s") and len(t) > 3 else t for t in i.slots.get("topic") or []]
+        if topic:
+            best, best_score = [], 0
+            for x in items:
+                title = " ".join([x["title"].lower()] + [a.lower() for a in x.get("aliases", [])])
+                text = " ".join(x.get(text_key, [])).lower()
+                score = sum(3 * (t in title) + (t in text) for t in topic)
+                if score > best_score:
+                    best, best_score = [x], score
+                elif score == best_score and score:
+                    best.append(x)
+            if best:
+                return self.rng.choice(best), False
+            return self.rng.choice(items), True
+        return self.rng.choice(items), False
+
     def do_story(self, i: Intent) -> Response:
-        sid = i.slots.get("id")
-        story = next((s for s in self.c.stories if s["id"] == sid), None) or self.rng.choice(self.c.stories)
-        r = Response([Say(f"{self.p('story_intro')} {story['title']}.", 0.6)], meta={"id": story["id"]})
+        story, missing = self._pick(self.c.stories, i, "paragraphs")
+        r = Response([Say(self.p("story_no_topic"), 0.4)] if missing else [], meta={"id": story["id"]})
+        r.items.append(Say(f"{self.p('story_intro')} {story['title']}.", 0.6))
         for para in story["paragraphs"]:
             r.items.append(Say(para, 0.55))
         return r
@@ -87,14 +132,15 @@ class Skills:
         return r
 
     def do_poem(self, i: Intent) -> Response:
-        pid = i.slots.get("id")
-        poem = next((p for p in self.c.poems if p["id"] == pid), None) or self.rng.choice(self.c.poems)
-        return self._poem(poem, "poem_intro")
+        poem, missing = self._pick(self.c.poems, i, "lines")
+        r = self._poem(poem, "poem_intro")
+        if missing:
+            r.items.insert(0, Say(self.p("poem_no_topic"), 0.4))
+        return r
 
     def do_song(self, i: Intent) -> Response:
         # songs were removed from the prototype: recite a poem instead
-        pid = i.slots.get("id")
-        poem = next((p for p in self.c.poems if p["id"] == pid), None) or self.rng.choice(self.c.poems)
+        poem, _missing = self._pick(self.c.poems, i, "lines")
         r = self._poem(poem, "song_redirect")
         r.intent = "poem"
         return r
@@ -127,22 +173,34 @@ class Skills:
 
     # ------------------------------------------------------------- numbers
     def do_count(self, i: Intent) -> Response:
+        """Counts any range from 0 to 100, forwards or backwards, in steps of 1 to 10.
+        The numbers come from nlu/slots.py, whatever words the child used."""
         step = int(i.slots.get("step") or 1)
-        step = step if step in (1, 2, 5, 10) else 1
+        step = step if 1 <= step <= MAX_STEP else 1
         back = bool(i.slots.get("backwards"))
         start = i.slots.get("start")
         end = i.slots.get("end")
+        if (start or 0) > MAX_COUNT and (end is None or end > MAX_COUNT):
+            return Response([Say(self.p("count_too_big"))])
         r = Response([Say(self.p("counting_intro"), 0.4)])
         if back:
-            start = start if start is not None else (end if end is not None else 10)
-            start = min(int(start), MAX_COUNT)
-            seq = list(range(start, -1, -step))
+            if start is None:
+                first, last = (int(end), 0) if end is not None else (10, 0)  # "count backwards from ten"
+            else:
+                first = int(start)
+                last = int(end) if end is not None else 0
+                if last > first:  # "count backwards from 1 to 10" = from ten down to one
+                    first, last = last, first
+            if first > MAX_COUNT:
+                r.items.append(Say("I can count up to one hundred. Let's go!", 0.4))
+                first = MAX_COUNT
+            seq = list(range(first, max(last, 0) - 1, -step))
         else:
             first = int(start) if start is not None else (step if step > 1 else 1)
             last = int(end) if end is not None else (100 if step > 1 else 10 if end is None and start is None else first + 10)
-            if last > MAX_COUNT:
+            if last > MAX_COUNT or first > MAX_COUNT:
                 r.items.append(Say("I can count up to one hundred. Let's go!", 0.4))
-                last = MAX_COUNT
+                last, first = min(last, MAX_COUNT), min(first, MAX_COUNT)
             if last < first:
                 seq = list(range(first, last - 1, -step))
             else:
@@ -158,9 +216,13 @@ class Skills:
 
     def do_table(self, i: Intent) -> Response:
         n = i.slots.get("n")
-        if not n or not 1 <= n <= 10:
+        r = Response([])
+        if n and n > MAX_TABLE:
+            r.items.append(Say(self.p("table_too_big"), 0.4))
+            n = MAX_TABLE
+        if not n or not 1 <= n <= MAX_TABLE:
             n = self.rng.randint(2, 5)
-        r = Response([Say(f"The table of {number_to_words(n)}.", 0.5)])
+        r.items.append(Say(f"The table of {number_to_words(n)}.", 0.5))
         for k in range(1, 11):
             r.items.append(Say(self.times_line(n, k), 0.25))
         r.items.append(Say(self.p("counting_outro")))
@@ -172,8 +234,10 @@ class Skills:
 
     def do_math(self, i: Intent) -> Response:
         a, b, op = i.slots["a"], i.slots["b"], i.slots["op"]
-        if not (0 <= a <= 10 and 0 <= b <= 10):
-            return Response([Say("Wow, those are big numbers! I can do sums with numbers up to ten.")])
+        if op == "times" and not (0 <= a <= MAX_TABLE and 0 <= b <= MAX_TABLE):
+            return Response([Say("Wow, those are big numbers! I know my times tables up to twelve.")])
+        if op != "times" and not (0 <= a <= MAX_SUM and 0 <= b <= MAX_SUM):
+            return Response([Say("Wow, those are big numbers! I can do sums with numbers up to twenty.")])
         if op == "plus":
             return Response([Say(f"{number_to_words(a).capitalize()} plus {number_to_words(b)} is {number_to_words(a + b)}!")])
         if op == "minus":
@@ -250,6 +314,15 @@ class Skills:
         return Response([Say(self.p("months_intro"), 0.4), Say(", ".join(m[:6]) + ",", 0.2),
                          Say(", ".join(m[6:]) + ".")])
 
+    def do_opposite_of(self, i: Intent) -> Response:
+        word = i.slots["word"]
+        other = self.m.opposite_of[word]
+        return Response([Say(self.opposite_line(word, other))])
+
+    @staticmethod
+    def opposite_line(a: str, b: str) -> str:
+        return f"The opposite of {a} is {b}!"
+
     def do_opposites(self, i: Intent) -> Response:
         r = Response([Say(self.p("opposites_intro"), 0.4)])
         for a, b in self.c.lessons["opposites"]:
@@ -272,7 +345,8 @@ class Skills:
             return reveal(self.p("reveal"))
 
         return Response([Say(self.p("riddle_intro"), 0.3), Say(rd["q"])],
-                        expect=Expect(handler, on_timeout=lambda: reveal("The answer is")))
+                        expect=Expect(handler, on_timeout=lambda: reveal("The answer is"), prompt=[Say(rd["q"])],
+                                      check=lambda text: self.m.matches_answer(text, rd["a"])))
 
     # ------------------------------------------------------------- quiz (adaptive)
     def do_quiz(self, i: Intent) -> Response:
@@ -310,15 +384,19 @@ class Skills:
             state["tries"] += 1
             if state["tries"] == 1 and not self.m.is_dont_know(text):
                 r = Response([Say(self.p("try_again"), 0.3), Say(q.hint, 0.3), Say(q.text)], repeatable=False)
-                r.expect = Expect(handler, on_timeout=timeout)
+                r.expect = Expect(handler, on_timeout=timeout, prompt=[Say(q.text)],
+                                  check=lambda t: self.check_answer(t, q.answers))
                 return r
             self.progress.record(q.domain, q.id, False)
             return next_or_end(Response([Say(f"{self.p('reveal')} {dot(q.say_answer)}", 0.5)], repeatable=False))
 
         def timeout() -> Response:
-            return Response([Say(f"The answer is {dot(q.say_answer)}", 0.4), Say(self.p("no_command"))], repeatable=False)
+            # Buddy keeps listening after this, so no "say Hey Buddy" here
+            return Response([Say(f"The answer is {dot(q.say_answer)}", 0.4), Say(self.p("quiz_timeout_end"))],
+                            repeatable=False)
 
-        return Expect(handler, on_timeout=timeout, data={"question": q.id})
+        return Expect(handler, on_timeout=timeout, data={"question": q.id}, prompt=[Say(q.text)],
+                      check=lambda t: self.check_answer(t, q.answers))
 
     def check_answer(self, text: str, answers: list) -> bool:
         letters = [a.split(":", 1)[1] for a in answers if isinstance(a, str) and a.startswith("letter:")]
@@ -345,10 +423,13 @@ class Skills:
     def _simple(self, key: str) -> Callable[[Intent], Response]:
         return lambda i: Response([Say(self.p(key))])
 
-    def do_hello(self, i): return Response([Say(self.p("hello"))])
+    def do_hello(self, i):
+        # a child saying hello in the middle of playing gets "Hello again!", not the first-time greeting
+        return Response([Say(self.p("hello_again" if i.slots.get("again") else "hello"))])
+
     def do_good_morning(self, i): return Response([Say(self.p("good_morning"))])
-    def do_good_night(self, i): return Response([Say(self.p("good_night"))])
-    def do_goodbye(self, i): return Response([Say(self.p("goodbye"))])
+    def do_good_night(self, i): return Response([Say(self.p("good_night"))], action="quit", repeatable=False, after="sleep")
+    def do_goodbye(self, i): return Response([Say(self.p("goodbye"))], action="quit", repeatable=False, after="sleep")
     def do_thanks(self, i): return Response([Say(self.p("thanks"))])
     def do_love(self, i): return Response([Say(self.p("love"))])
     def do_name(self, i): return Response([Say(self.p("name"))])
@@ -366,7 +447,7 @@ class Skills:
     def do_unknown(self, i: Intent) -> Response:
         self.unknown_streak += 1
         key = "not_understood_help" if self.unknown_streak >= 2 else "not_understood"
-        return Response([Say(self.p(key))], repeatable=False)
+        return Response([Say(self.p(key))], repeatable=False, after="silent")
 
     def do_none(self, i: Intent) -> Response:
         return Response([], repeatable=False)
@@ -393,16 +474,21 @@ class Skills:
         out.update(self._letter_line(x) for x in c.lessons["letters"])
         out.update(num(n) for n in range(0, MAX_COUNT + 1))
         out.update(["I can count up to one hundred. Let's go!", "Blast off!"])
-        for n in range(1, 11):
+        for n in range(1, MAX_TABLE + 1):
             out.add(f"The table of {number_to_words(n)}.")
-        for a in range(0, 11):
-            for b in range(0, 11):
+        for a in range(0, MAX_TABLE + 1):
+            for b in range(0, MAX_TABLE + 1):
                 out.add(self.times_line(a, b))
+        for a in range(0, MAX_SUM + 1):
+            for b in range(0, MAX_SUM + 1):
                 out.add(f"{number_to_words(a).capitalize()} plus {number_to_words(b)} is {number_to_words(a + b)}!")
                 if a >= b:
                     out.add(f"{number_to_words(a).capitalize()} minus {number_to_words(b)} is {number_to_words(a - b)}!")
-        out.update(["Wow, those are big numbers! I can do sums with numbers up to ten.",
+        out.update(["Wow, those are big numbers! I can do sums with numbers up to twenty.",
+                    "Wow, those are big numbers! I know my times tables up to twelve.",
                     "Hmm, that would go below zero! Let's try a smaller number to take away."])
+        for a, b in c.lessons["opposites"]:
+            out.update([self.opposite_line(a, b), self.opposite_line(b, a)])
         for a in c.animals:
             out.add(f"The {a['names'][0]} says... {a['sound']}")
             out.add(a["fact"])

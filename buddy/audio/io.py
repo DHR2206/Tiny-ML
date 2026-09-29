@@ -89,6 +89,7 @@ class Speaker:
         self.device = _device(device)
         self.rate = rate
         self.volume = volume
+        self.duck = 1.0  # temporary extra gain: Buddy talks softer while it listens for "pause"/"stop"
         self._lock = threading.Lock()
         self._buf = np.zeros(0, dtype=np.float32)
         self._pos = 0
@@ -101,7 +102,7 @@ class Speaker:
             with self._lock:
                 chunk = self._buf[self._pos:self._pos + frames]
                 self._pos += len(chunk)
-                vol = self.volume
+                vol = self.volume * self.duck
             out = np.zeros(frames, dtype=np.float32)
             out[:len(chunk)] = chunk * vol
             outdata[:, 0] = out

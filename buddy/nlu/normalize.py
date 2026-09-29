@@ -24,6 +24,9 @@ def number_to_words(n: int) -> str:
     return number_to_words(th) + " thousand" + ("" if r == 0 else " " + number_to_words(r))
 
 
+_PLURALS = {1: "ones", 2: "twos", 3: "threes", 4: "fours", 5: "fives", 6: "sixes", 7: "sevens", 8: "eights",
+            9: "nines", 10: "tens"}
+
 WORD_VALUES = {w: i for i, w in enumerate(_ONES)}
 WORD_VALUES.update({w: i * 10 for i, w in enumerate(_TENS) if w})
 WORD_VALUES.update({"hundred": 100, "fourty": 40, "twelf": 12})
@@ -60,7 +63,12 @@ def normalize(text: str) -> list[str]:
     t = re.sub(r"\b([a-z])-([a-z]{2,})\b", r"\1\2", t)  # "P-Way" -> "pway"
     t = re.sub(r"(\d)\s*[x×\*]\s*(\d)", r"\1 times \2", t)
     t = re.sub(r"(\d)\s*\+\s*(\d)", r"\1 plus \2", t)
+    # Recognisers write ranges as "1-10" / "1–10" but subtraction as "5 - 3".  Keep the
+    # difference as a neutral "dash" token; nlu/slots.py decides range vs. minus from context.
+    t = re.sub(r"(\d)\s*[–—]\s*(\d)", r"\1 dash \2", t)
+    t = re.sub(r"(\d)-(\d)", r"\1 dash \2", t)
     t = re.sub(r"(\d)\s*-\s*(\d)", r"\1 minus \2", t)
+    t = re.sub(r"\b(10|[1-9])'?s\b", lambda m: _PLURALS[int(m.group(1))], t)  # "count in 5s" -> "fives"
     for k in sorted(CONTRACTIONS, key=len, reverse=True):
         if " " in k or "." in k or "," in k or "-" in k:
             t = t.replace(k, CONTRACTIONS[k])

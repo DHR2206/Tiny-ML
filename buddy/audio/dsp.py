@@ -44,6 +44,7 @@ def silence(seconds: float, rate: int) -> np.ndarray:
 
 def earcon(kind: str, rate: int) -> np.ndarray:
     """Friendly synthetic chimes (no sample files needed)."""
+    level = {"ready": 0.18}.get(kind, 0.35)  # "ready" = soft "I'm still listening" chime after a task
     notes = {
         "listen": [(880, 0.09), (1175, 0.14)],
         "correct": [(784, 0.08), (988, 0.08), (1319, 0.18)],
@@ -51,12 +52,13 @@ def earcon(kind: str, rate: int) -> np.ndarray:
         "mute": [(988, 0.1), (659, 0.16)],
         "unmute": [(659, 0.1), (988, 0.16)],
         "end": [(1175, 0.08), (880, 0.12)],
+        "ready": [(988, 0.07), (1319, 0.11)],
     }.get(kind, [(880, 0.1)])
     out = []
     for f, d in notes:
         t = np.arange(int(rate * d)) / rate
         env = np.exp(-t * 18) * np.minimum(1, t * 400)
-        tone = 0.35 * env * (np.sin(2 * math.pi * f * t) + 0.3 * np.sin(4 * math.pi * f * t))
+        tone = level * env * (np.sin(2 * math.pi * f * t) + 0.3 * np.sin(4 * math.pi * f * t))
         out.append(tone.astype(np.float32))
     return np.concatenate(out)
 

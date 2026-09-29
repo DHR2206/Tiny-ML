@@ -13,6 +13,11 @@ max_volume = 0.85  # parental cap: "louder" never goes above this
 [wake]
 threshold = 0.8    # raise (e.g. 0.85) if Buddy wakes up by mistake, lower if it misses "Hey Buddy"
 
+[session]
+follow_up_seconds = 15      # keep listening this long after each answer (no "Hey Buddy" needed); 0 = old behaviour
+prompt_every = 2            # short "What next?" line after every 2nd task (a soft chime after every task)
+pause_memory_seconds = 180  # "continue" works this long after "pause"
+
 [asr]
 model = "moonshine-base"   # or "moonshine-tiny" (faster, a little less accurate)
 

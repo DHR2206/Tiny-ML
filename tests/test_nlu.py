@@ -72,6 +72,58 @@ CHILD_CASES = [
     ("sapes", "shapes"),                 # depalatalisation
 ]
 
+# Natural variations: the same request in other words, word orders, number forms and
+# recogniser spellings ("1-10").  Handled by the shared slot extractor, not by listing phrases.
+VARIATION_CASES = [
+    # counting: any phrasing of a range, step or direction
+    ("count from 1 to 10", "count", {"start": 1, "end": 10}), ("count 1 to 10", "count", {"start": 1, "end": 10}),
+    ("can you count from 1 to 10", "count", {"start": 1, "end": 10}),
+    ("start counting from 5 to 15", "count", {"start": 5, "end": 15}),
+    ("count from 3 until 8", "count", {"start": 3, "end": 8}), ("count one to ten", "count", {"start": 1, "end": 10}),
+    ("Count from 1-10.", "count", {"start": 1, "end": 10}), ("count 1 - 20", "count", {"start": 1, "end": 20}),
+    ("count from 1 through 10", "count", {"start": 1, "end": 10}),
+    ("count between 3 and 8", "count", {"start": 3, "end": 8}),
+    ("count from one two ten", "count", {"start": 1, "end": 10}),  # "to" heard as "two"
+    ("can't from one to ten", "count", {"start": 1, "end": 10}),  # "count" misheard: the range says it
+    ("from five to fifteen", "count", {"start": 5, "end": 15}),
+    ("count up to 15", "count", {"end": 15}), ("let's count to 7", "count", {"end": 7}),
+    ("i want to count to twelve", "count", {"end": 12}), ("count to a hundred", "count", {"end": 100}),
+    ("count by 3", "count", {"step": 3}), ("count in threes", "count", {"step": 3}),
+    ("count in 5s", "count", {"step": 5}), ("count by twos to 20", "count", {"step": 2, "end": 20}),
+    ("count to 20 by 2", "count", {"step": 2, "end": 20}),
+    ("count down from 10", "count", {"backwards": True, "start": 10}),
+    ("countdown from 5", "count", {"backwards": True, "start": 5}),
+    ("count backwards from 20 to 10", "count", {"backwards": True, "start": 20, "end": 10}),
+    ("count 10 to 1", "count", {"start": 10, "end": 1}),
+    # sums and tables
+    ("what is 2 plus 3", "math", {"a": 2, "b": 3, "op": "plus"}), ("2 + 3", "math", {"a": 2, "b": 3}),
+    ("add 2 and 3", "math", {"a": 2, "b": 3, "op": "plus"}), ("how much is 5 and 2", "math", {"a": 5, "b": 2}),
+    ("take away 2 from 5", "math", {"a": 5, "b": 2, "op": "minus"}), ("what is 12 plus 5", "math", {"a": 12, "b": 5}),
+    ("what is 5-3", "math", {"a": 5, "b": 3, "op": "minus"}), ("3 x 4", "math", {"a": 3, "b": 4, "op": "times"}),
+    ("multiply 3 by 4", "math", {"a": 3, "b": 4, "op": "times"}), ("table of 12", "table", {"n": 12}),
+    ("tell me the 2 times table", "table", {"n": 2}),
+    # stories, poems, letters, animals
+    ("can you tell me a story", "story", {}), ("read me a story", "story", {}), ("story time", "story", {}),
+    ("tell me a story about a lion", "story", {}), ("a poem about the moon", "poem", {}),  # which one: test_brain
+    ("recite a poem", "poem", {}), ("can you say a rhyme", "poem", {}), ("sing me a song", "song", {}),
+    ("what does the letter b say", "phonics", {"letter": "b"}), ("a for apple", "phonics", {"letter": "a"}),
+    ("what sound does a cow make", "animal_sound", {"animal": "cow"}), ("how does a dog bark", "animal_sound", {"animal": "dog"}),
+    ("bee sound", "animal_sound", {"animal": "bee"}), ("can you make a lion sound", "animal_sound", {"animal": "lion"}),
+    ("lion facts", "animal_fact", {"animal": "lion"}), ("what noise does a pig make", "animal_sound", {"animal": "pig"}),
+    # games, lessons
+    ("quiz me", "quiz", {}), ("let's play", "quiz", {}), ("can we play a game", "quiz", {}),
+    ("test me on colours", "quiz", {"domain": "colors"}), ("make me laugh", "joke", {}), ("give me a riddle", "riddle", {}),
+    ("what colour is the sky", "color_of", {"thing": "sky"}), ("what is the opposite of hot", "opposite_of", {"word": "hot"}),
+    ("tell me the months", "months", {}), ("what are the days of the week", "days", {}),
+    # controls
+    ("please stop", "stop", {}), ("pause", "pause", {}), ("wait", "pause", {}), ("hold on", "pause", {}),
+    ("wait a minute", "pause", {}), ("continue", "continue", {}), ("go on", "continue", {}), ("keep going", "continue", {}),
+    ("resume", "continue", {}), ("continue the story", "continue", {}), ("don't stop", "continue", {}),
+    ("quit", "quit", {}), ("exit", "quit", {}), ("go to sleep", "quit", {}), ("i'm done", "quit", {}),
+    ("repeat", "repeat", {}), ("say that again", "repeat", {}), ("what did you say", "repeat", {}),
+    ("next", "more", {}), ("turn it up", "volume_up", {}), ("speak up", "volume_up", {}), ("turn it down", "volume_down", {}),
+]
+
 
 class TestNLU(unittest.TestCase):
     @classmethod
@@ -98,6 +150,30 @@ class TestNLU(unittest.TestCase):
         acc = 1 - len(fails) / len(CHILD_CASES)
         print(f"child-variant accuracy (age 4): {acc:.1%} ({len(CHILD_CASES)} cases)")
         self.assertGreaterEqual(acc, 0.85)
+
+    def test_natural_variations(self):
+        fails = []
+        for text, name, slots in VARIATION_CASES:
+            got = self.m6.parse(text)
+            if got.name != name or any(got.slots.get(k) != v for k, v in slots.items()):
+                fails.append((text, name, slots, got))
+        for f in fails:
+            print("  VARIATION FAIL", f)
+        print(f"natural-variation accuracy: {1 - len(fails) / len(VARIATION_CASES):.1%} ({len(VARIATION_CASES)} cases)")
+        self.assertEqual(fails, [])
+
+    def test_repeat_of_something(self):
+        got = self.m.parse("tell me the story again")
+        self.assertEqual(got.name, "repeat")
+        self.assertEqual(got.slots["then"].name, "story")
+
+    def test_ordinary_words_are_not_snapped(self):
+        # the first pass keeps real words; they used to become three / ten / heart / quiet / excited
+        for w in ("through", "turn", "hot", "quit", "exit", "continue", "wait", "laugh", "facts", "recite"):
+            toks, _ = self.m.canonicalize([w], aggressive=False)
+            self.assertEqual(toks, [w])
+        # ...while children's non-words still are
+        self.assertEqual(self.m.canonicalize(["tount", "to", "ten"], aggressive=False)[0][0], "count")
 
     def test_age_schedule(self):
         young, older = ChildPhonology(3.5), ChildPhonology(8.5)

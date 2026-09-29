@@ -33,34 +33,50 @@ def _cache(cfg, with_synth: bool):
 
 
 def cmd_chat(cfg, args) -> None:
+    """Type as the child.  Works like the voice mode's conversation: after "Hey Buddy", Buddy
+    keeps listening, so the next requests need no wake phrase.  An empty line = silence."""
     from .brain import Brain
 
     b = Brain(cfg)
-    print("Type what the child says (e.g. 'hey buddy tell me a story'). Ctrl+D to quit.")
-    pending = False
+    print("Type what the child says, e.g. 'hey buddy tell me a story', then 'tell me a joke' (no 'hey buddy' needed "
+          "while Buddy is listening).")
+    print("Empty line = silence (ends a quiz question, then the conversation). Ctrl+D (Mac/Linux) or Ctrl+Z Enter "
+          "(Windows) to quit.")
+    awake, window = False, None
     for line in sys.stdin:
         text = line.strip()
         if not text:
             if b.expecting:
                 r = b.timeout()
-                print("  (timeout) Buddy:", r.transcript())
+                print("  (silence) Buddy:", r.transcript())
+            elif awake:
+                awake = False
+                print("  (silence) Buddy:", b.skills.p("sleep"), "[Buddy goes to sleep]")
             continue
         woke, rest, _ = b.wake.split(text)
-        if b.expecting and not woke:
+        if b.expecting and not woke and awake:
             r = b.answer(text)
         elif woke and rest:
             r = b.command(rest)
-        elif woke or pending:
-            if woke:
-                pending = True
-                print("  Buddy: [listen chime]")
-                continue
-            r = b.command(text)
-        else:
-            print("  (Buddy ignores speech without 'Hey Buddy')")
+        elif woke:
+            awake, window = True, "wake"
+            print("  Buddy: [listen chime]")
             continue
-        pending = False
+        elif awake:
+            r = b.command(text) if window == "wake" else b.follow_up(text)
+            if r is None:
+                print("  (Buddy ignores this: not a request)")
+                continue
+        else:
+            print("  (Buddy is asleep: start with 'Hey Buddy')")
+            continue
+        awake, window = r.after != "sleep", "follow"
+        if r.action in ("pause", "continue"):
+            print(f"  Buddy [{r.action}]: (pause and continue act on Buddy's speech in voice mode: python -m buddy run)")
+            continue
         print(f"  Buddy [{r.intent}{' / ' + r.action if r.action else ''}]:", r.transcript())
+        if not awake:
+            print("  [Buddy goes to sleep - say 'Hey Buddy' to wake it]")
 
 
 def cmd_build(cfg, args) -> None:
@@ -103,7 +119,8 @@ def cmd_run(cfg, args) -> None:
     engine.button = MuteButton(h.get("mute_button_gpio"), h.get("led_gpio"), engine.toggle_mute)
     if h.get("keyboard") and sys.stdin.isatty():
         engine.keyboard()
-        print("Keys: m=mute/unmute  t=talk  q=quit  (or type a command)")
+        print("Keys: m=mute/unmute  t=talk  p=pause/continue  r=repeat  x=end conversation  q=quit  "
+              "(or type a command)")
     try:
         engine.run()
     except KeyboardInterrupt:

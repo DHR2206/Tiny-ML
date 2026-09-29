@@ -38,20 +38,34 @@ class Expect:
 
     handler(tokens, raw_text) -> Response  is called with the child's reply.
     on_timeout() -> Response  is called if nothing is said within the answer window.
+    prompt  the question itself, said again when the child asks Buddy to repeat.
+    check(raw_text) -> bool  True if the reply answers the question correctly; lets a clear
+            new request ("tell me a story") end the game instead of counting as a wrong answer.
     """
     handler: Callable[[list[str], str], "Response"]
     on_timeout: Optional[Callable[[], "Response"]] = None
     data: dict = field(default_factory=dict)
+    prompt: list = field(default_factory=list)
+    check: Optional[Callable[[str], bool]] = None
+
+
+# What the engine does once a Response has finished playing (see engine.py):
+#   task   - a task is complete: soft chime (sometimes a short "what next?" prompt), keep listening
+#   silent - keep listening for the next command, no chime or prompt
+#   wake   - short listening window after a bare "Hey Buddy"
+#   sleep  - the conversation is over; wait for "Hey Buddy" again
+AFTER_KINDS = ("task", "silent", "wake", "sleep")
 
 
 @dataclass
 class Response:
     items: list[Item] = field(default_factory=list)
     expect: Optional[Expect] = None
-    action: Optional[str] = None  # stop | volume_up | volume_down | repeat
+    action: Optional[str] = None  # stop | volume_up | volume_down | repeat | more | pause | continue | quit
     repeatable: bool = True  # store as "last response" for "say it again"
     intent: str = ""
     meta: dict[str, Any] = field(default_factory=dict)
+    after: str = "task"  # one of AFTER_KINDS
 
     def say(self, text: str, pause: float = 0.3) -> "Response":
         self.items.append(Say(text, pause))

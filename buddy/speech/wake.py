@@ -55,3 +55,28 @@ class WakeMatcher:
                 return False, " ".join(toks), score
             return True, rest, score
         return False, " ".join(toks), score
+
+    def find(self, text: str) -> tuple[bool, str, float]:
+        """Wake phrase *anywhere* in the text -> (woke, words after it, score).
+
+        Used while Buddy is talking: the microphone then also hears Buddy, so the recognised
+        text may start with Buddy's own words ("...drank the water hey buddy pause").
+        Only the two-word phrases count here; a bare "buddy" inside a sentence is not a wake-up.
+        """
+        toks = normalize(text)
+        best = (0.0, 0, 0)
+        for i in range(len(toks)):
+            for k in (1, 2):
+                if i + k > len(toks):
+                    break
+                ph = phrase_phonemes(toks[i:i + k])
+                for phrase, target in self.targets:
+                    if len(phrase.split()) == 1 or (k == 1 and len(ph) < len(target) - 1):
+                        continue
+                    s = self.phon.similarity(ph, target) - (0.03 if k == 1 else 0.0)  # glued "heybody"
+                    if s > best[0]:
+                        best = (s, i, k)
+        score, i, k = best
+        if score >= max(self.threshold, 0.85):
+            return True, " ".join(toks[i + k:]), score
+        return False, " ".join(toks), score
