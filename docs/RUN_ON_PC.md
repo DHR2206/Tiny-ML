@@ -158,6 +158,12 @@ Keyboard helpers in the same window (type, then press Enter):
 To see what Buddy heard while you test, set `log_transcripts = true` under `[privacy]` in `buddy.toml`.
 Set it back to `false` afterwards.
 
+<!-- RECORDS (temporary): remove this note with the feature -->
+**Interaction records (temporary, for testing):** every run also writes down what Buddy heard, understood and said,
+as text only (no audio). The voice mode writes to `C:\Users\<you>\buddy-data\records\<date>_voice.jsonl`, and typing
+in Step 7 writes to `<date>_chat.jsonl`. Later you can give these files to an AI assistant to find where Buddy
+misunderstands. To switch it off, add `[records]` with `enabled = false` to `buddy.toml`. Details: [RECORDS.md](RECORDS.md).
+
 ## Step 11 (optional): Run the automated tests
 
 ```bash

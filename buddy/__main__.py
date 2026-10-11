@@ -32,12 +32,23 @@ def _cache(cfg, with_synth: bool):
     return SpeechCache(cfg.cache_dir, vkey, int(cfg["audio"]["output_rate"]), synth)
 
 
+def _records(cfg, source: str, brain=None):  # RECORDS (temporary): remove before the final release
+    """Interaction records for analysis (docs/RECORDS.md), or None when [records] enabled = false."""
+    if not cfg["records"].get("enabled"):
+        return None
+    from .records import open_records
+
+    rec = open_records(cfg, source)
+    return rec.attach(brain) if brain is not None else rec
+
+
 def cmd_chat(cfg, args) -> None:
     """Type as the child.  Works like the voice mode's conversation: after "Hey Buddy", Buddy
     keeps listening, so the next requests need no wake phrase.  An empty line = silence."""
     from .brain import Brain
 
     b = Brain(cfg)
+    rec = _records(cfg, "chat", b)  # RECORDS (temporary)
     print("Type what the child says, e.g. 'hey buddy tell me a story', then 'tell me a joke' (no 'hey buddy' needed "
           "while Buddy is listening).")
     print("Empty line = silence (ends a quiz question, then the conversation). Ctrl+D (Mac/Linux) or Ctrl+Z Enter "
@@ -45,13 +56,18 @@ def cmd_chat(cfg, args) -> None:
     awake, window = False, None
     for line in sys.stdin:
         text = line.strip()
+        if rec:  # RECORDS (temporary)
+            rec.chat_line(text, "answering" if b.expecting and awake else "listening" if awake else "asleep")
         if not text:
             if b.expecting:
                 r = b.timeout()
                 print("  (silence) Buddy:", r.transcript())
             elif awake:
                 awake = False
-                print("  (silence) Buddy:", b.skills.p("sleep"), "[Buddy goes to sleep]")
+                bye = b.skills.p("sleep")
+                print("  (silence) Buddy:", bye, "[Buddy goes to sleep]")
+                if rec:  # RECORDS (temporary)
+                    rec.event_now("conversation_end", text=bye)
             continue
         woke, rest, _ = b.wake.split(text)
         if b.expecting and not woke and awake:
@@ -77,6 +93,8 @@ def cmd_chat(cfg, args) -> None:
         print(f"  Buddy [{r.intent}{' / ' + r.action if r.action else ''}]:", r.transcript())
         if not awake:
             print("  [Buddy goes to sleep - say 'Hey Buddy' to wake it]")
+    if rec:  # RECORDS (temporary)
+        rec.close("end of typed input")
 
 
 def cmd_build(cfg, args) -> None:
@@ -114,7 +132,13 @@ def cmd_run(cfg, args) -> None:
     vad = Vad(cfg.models_dir, v["threshold"], v["min_silence"], v["min_speech"], v["max_utterance"])
     mic = Microphone(a["input_device"], a["input_rate"])
     spk = Speaker(a["output_device"], int(a["output_rate"]), float(a["volume"]))
-    engine = Engine(cfg, brain, mic, spk, asr, vad, cache)
+    rec = _records(cfg, "voice")  # RECORDS (temporary): the same engine, plus records
+    if rec:
+        from .records import RecordingEngine
+
+        engine = RecordingEngine(cfg, brain, mic, spk, asr, vad, cache, recorder=rec)
+    else:
+        engine = Engine(cfg, brain, mic, spk, asr, vad, cache)
     h = cfg["hardware"]
     engine.button = MuteButton(h.get("mute_button_gpio"), h.get("led_gpio"), engine.toggle_mute)
     if h.get("keyboard") and sys.stdin.isatty():
@@ -137,6 +161,7 @@ def cmd_simulate(cfg, args) -> None:
     from .speech.models import Recognizer, Vad
 
     b = Brain(cfg)
+    rec = _records(cfg, "simulate", b)  # RECORDS (temporary)
     asr = Recognizer(cfg.models_dir, cfg["asr"]["model"], int(cfg["asr"]["threads"]))
     v = cfg["vad"]
     for f in args.files:
@@ -148,6 +173,8 @@ def cmd_simulate(cfg, args) -> None:
             t0 = time.time()
             text = asr.transcribe(seg)
             asr_ms = (time.time() - t0) * 1000
+            if rec:  # RECORDS (temporary)
+                rec.begin(text, "answering" if b.expecting else "asleep", "wav_file", len(seg) / 16000, asr_ms, f)
             woke, rest, score = b.wake.split(text)
             if b.expecting and not woke:
                 r = b.answer(text)
@@ -158,6 +185,10 @@ def cmd_simulate(cfg, args) -> None:
             print(f"{f}: heard {text!r} ({len(seg) / 16000:.1f}s audio, ASR {asr_ms:.0f} ms) wake={woke}({score:.2f})")
             if r:
                 print(f"   -> [{r.intent}] {r.transcript()[:150]}")
+            if rec:  # RECORDS (temporary)
+                rec.end(rec.turn)
+    if rec:  # RECORDS (temporary)
+        rec.close("all files done")
 
 
 def cmd_doctor(cfg, args) -> None:

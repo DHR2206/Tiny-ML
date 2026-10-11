@@ -39,3 +39,10 @@ led_gpio = 27          # "none" if you have no LED
 
 [privacy]
 log_transcripts = false  # keep false; true only while debugging
+
+# RECORDS (temporary): text records of what Buddy heard and said, for analysis (docs/RECORDS.md).
+# Remove this section together with the feature before the final release.
+[records]
+enabled = true              # false = record nothing
+# folder = "~/buddy-data/records"
+# near_miss_score = 0.7     # while asleep, keep only speech that sounded this much like "Hey Buddy"

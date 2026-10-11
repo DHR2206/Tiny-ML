@@ -3,6 +3,10 @@
 An Alexa-style assistant built for small children. It runs **100 % offline** on a **Raspberry Pi 5**,
 uses **only open-source models**, and keeps **no recordings**.
 
+<!-- RECORDS (temporary): remove this note with the feature -->
+> **Testing phase:** Buddy currently keeps **text records** of what it heard and said (no audio) so that its
+> mistakes can be analysed. This is temporary and is removed before the release. See [docs/RECORDS.md](docs/RECORDS.md).
+
 ```
 "Hey Buddy, what does the cow say?"  …  "Now count from 5 to 15!"  (no "Hey Buddy" needed while Buddy listens)
   mic → Silero VAD → Moonshine speech-to-text → wake phrase / conversation window
@@ -57,6 +61,7 @@ buddy/
   brain.py           dialogue manager (follow-up requests, quiz answers, repeat, parental rules)
   playback.py        sentence-by-sentence player (pause / continue / repeat position)
   engine.py          real-time loop, conversation session, barge-in, echo guard, mute (core invention 3: privacy)
+  records.py         RECORDS (temporary): interaction records for analysis, remove before release (docs/RECORDS.md)
   skills/handlers.py all activities
   content/*.json     stories, poems, animals, lessons, jokes, FAQ, phrases (editable)
 tests/               unit + end-to-end tests

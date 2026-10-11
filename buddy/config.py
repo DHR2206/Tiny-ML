@@ -80,6 +80,12 @@ DEFAULTS: dict[str, Any] = {
     "privacy": {
         "log_transcripts": False,  # never log what the child says unless debugging
     },
+    # RECORDS (temporary): interaction records for analysis - remove before the final release (docs/RECORDS.md)
+    "records": {
+        "enabled": True,  # what Buddy heard and said, one JSON line per interaction (text only, no audio)
+        "folder": str(HOME / "records"),  # outside the project folder, so records never go to git
+        "near_miss_score": 0.7,  # while asleep, keep only speech that sounded at least this much like "Hey Buddy"
+    },
 }
 
 
