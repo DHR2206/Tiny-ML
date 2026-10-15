@@ -15,7 +15,7 @@ import logging
 import sys
 import time
 
-from .config import load_config
+from .config import ConfigError, load_config
 
 
 def _cache(cfg, with_synth: bool):
@@ -54,6 +54,18 @@ def cmd_chat(cfg, args) -> None:
     print("Empty line = silence (ends a quiz question, then the conversation). Ctrl+D (Mac/Linux) or Ctrl+Z Enter "
           "(Windows) to quit.")
     awake, window = False, None
+    try:
+        _chat_loop(b, rec, awake, window)
+    except BaseException as exc:  # RECORDS (temporary)
+        if rec:
+            rec._safe(rec.crash, exc)  # without this a crash was recorded as "ignored" (finding H2)
+            rec._safe(rec.close, "crashed")
+        raise
+    if rec:  # RECORDS (temporary)
+        rec.close("end of typed input")
+
+
+def _chat_loop(b, rec, awake, window) -> None:
     for line in sys.stdin:
         text = line.strip()
         if rec:  # RECORDS (temporary)
@@ -93,8 +105,6 @@ def cmd_chat(cfg, args) -> None:
         print(f"  Buddy [{r.intent}{' / ' + r.action if r.action else ''}]:", r.transcript())
         if not awake:
             print("  [Buddy goes to sleep - say 'Hey Buddy' to wake it]")
-    if rec:  # RECORDS (temporary)
-        rec.close("end of typed input")
 
 
 def cmd_build(cfg, args) -> None:
@@ -164,7 +174,24 @@ def cmd_simulate(cfg, args) -> None:
     rec = _records(cfg, "simulate", b)  # RECORDS (temporary)
     asr = Recognizer(cfg.models_dir, cfg["asr"]["model"], int(cfg["asr"]["threads"]))
     v = cfg["vad"]
-    for f in args.files:
+    try:
+        _simulate_files(b, rec, asr, cfg, v, args.files)
+    except BaseException as exc:  # RECORDS (temporary)
+        if rec:
+            rec._safe(rec.crash, exc)  # see finding H2
+            rec._safe(rec.close, "crashed")
+        raise
+    if rec:  # RECORDS (temporary)
+        rec.close("all files done")
+
+
+def _simulate_files(b, rec, asr, cfg, v, files) -> None:
+    import numpy as np
+
+    from .audio.dsp import read_wav, resample
+    from .speech.models import Vad
+
+    for f in files:
         x, sr = read_wav(f)
         x = resample(x, sr, 16000)
         vad = Vad(cfg.models_dir, v["threshold"], v["min_silence"], v["min_speech"], v["max_utterance"])
@@ -187,8 +214,6 @@ def cmd_simulate(cfg, args) -> None:
                 print(f"   -> [{r.intent}] {r.transcript()[:150]}")
             if rec:  # RECORDS (temporary)
                 rec.end(rec.turn)
-    if rec:  # RECORDS (temporary)
-        rec.close("all files done")
 
 
 def cmd_doctor(cfg, args) -> None:
@@ -250,9 +275,17 @@ def main(argv=None) -> None:
     sub.add_parser("progress").set_defaults(reset=False)
     sub.add_parser("reset-progress").set_defaults(reset=True)
     args = ap.parse_args(argv)
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="backslashreplace")  # cp1252 console (finding L6)
+        except (AttributeError, OSError):
+            pass
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
-    cfg = load_config(args.config)
+    try:
+        cfg = load_config(args.config)
+    except ConfigError as e:
+        raise SystemExit(f"Configuration problem: {e}")
     {"run": cmd_run, "chat": cmd_chat, "build-content": cmd_build, "simulate": cmd_simulate,
      "doctor": cmd_doctor, "progress": cmd_progress, "reset-progress": cmd_progress}[args.cmd](cfg, args)
 

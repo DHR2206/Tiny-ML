@@ -54,6 +54,9 @@ catch caught kick hit push pull build built fall falls fell fallen fly flies fle
 swim swims swam swimming climb climbing ride rides rode riding drive drove buy bought bring
 brought send sent learn learns learned learnt learning teach teaches taught teaching study
 remember remembers forget forgets forgot forgotten understand understood mean means meant guess
+order orders ordered ordering set sets setting routine routines
+chin chins cheek cheeks elbow elbows thumb thumbs
+prime minister ministers capital capitals weather twinkle twinkles drop drops alert alerts
 count counts counted counting add adds added adding repeat repeats repeated recite recites
 recited spell spelled spelling tidy pick picked choose chose chosen share shared grow grows
 grew grown growing live lives lived living die move moves moved moving change changes changed

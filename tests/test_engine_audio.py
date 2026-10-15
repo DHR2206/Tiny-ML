@@ -4,6 +4,7 @@ Feeds a recorded command ("Hey Buddy, what does the cow say?") into the engine i
 32 ms blocks, as a microphone would, and checks that Buddy answers with audio.
 Skipped automatically when the models are not installed.
 """
+import importlib.util
 import random
 import tempfile
 import time
@@ -16,7 +17,11 @@ from buddy.config import Config
 from buddy.learning.progress import Progress
 
 MODELS = Path.home() / "buddy-data" / "models"
-HAVE = (MODELS / "silero_vad.onnx").exists() and (MODELS / "vits-piper-en_US-ljspeech-medium").exists()
+# The models are loaded *through* sherpa-onnx, so having the files is not enough: without the
+# package this test used to run and die with SystemExit instead of skipping (finding M1).
+HAVE_RUNTIME = importlib.util.find_spec("sherpa_onnx") is not None
+HAVE = (HAVE_RUNTIME and (MODELS / "silero_vad.onnx").exists()
+        and (MODELS / "vits-piper-en_US-ljspeech-medium").exists())
 ASR = "moonshine-base" if (MODELS / "sherpa-onnx-moonshine-base-en-quantized-2026-02-27").exists() else "moonshine-tiny"
 
 

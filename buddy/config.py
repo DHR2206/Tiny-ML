@@ -2,13 +2,21 @@
 from __future__ import annotations
 
 import copy
+import logging
 import os
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+log = logging.getLogger(__name__)
+
 HOME = Path(os.environ.get("BUDDY_HOME", Path.home() / "buddy-data"))
+
+
+class ConfigError(Exception):
+    """A settings file that cannot be used, reported in words a parent can act on."""
 
 DEFAULTS: dict[str, Any] = {
     "child": {
@@ -62,7 +70,24 @@ DEFAULTS: dict[str, Any] = {
         "runtime_fallback": True,  # synthesise missing phrases on the fly
     },
     "nlu": {
-        "min_confidence": 0.55,
+        # How clearly the words of a request must have been heard before Buddy will start an
+        # activity on them.  0 = off, which is the behaviour Buddy has always had (before v0.4
+        # this setting was declared here but never read by anything).
+        #
+        # It trades unclear speech against nonsense, and the useful range depends on [child] age,
+        # because the phoneme distance is age-scheduled.  Measured over the child-speech sets in
+        # tests/test_nlu.py and the QA probe (19 mispronounced commands, 16 nonsense utterances):
+        #
+        #   value   age 3-4                       age 5 (default)               age 8
+        #   0.00    3 nonsense get an activity    2 get an activity             0
+        #   0.70    2 nonsense                    2 nonsense                    8 commands lost
+        #   0.74    1 nonsense                    2 nonsense, 1 command lost    10 commands lost
+        #   0.78    1 nonsense, 6 commands lost   13 commands lost              16 commands lost
+        #
+        # So there is no single value that is right for every age: raising it makes Buddy answer
+        # "I didn't catch that" more often, which is safer but less forgiving of a 4-year-old.
+        # Left off by default; see docs/FIXES.md before changing it.
+        "min_confidence": 0.0,
         "answer_window": 9.0,  # seconds to answer a quiz question without the wake word
         "fallback": "none",  # optional extra intent classifier (nlu/fallback.py); none available yet
     },
@@ -124,16 +149,54 @@ class Config:
 
 
 def load_config(path: str | os.PathLike | None = None) -> Config:
-    """Load defaults, then overlay the TOML file (if any)."""
+    """Load defaults, then overlay the TOML file (if any).
+
+    Raises ConfigError for a file that was asked for but cannot be used, so a parent is told
+    rather than silently getting the built-in defaults (finding L2).
+    """
     data = copy.deepcopy(DEFAULTS)
+    if path and not Path(path).is_file():
+        raise ConfigError(f"no settings file at {path}")
     candidates = [path] if path else [os.environ.get("BUDDY_CONFIG"), HOME / "buddy.toml", "buddy.toml"]
     for c in candidates:
         if c and Path(c).is_file():
-            with open(c, "rb") as fh:
-                data = _merge(data, tomllib.load(fh))
+            try:
+                with open(c, "rb") as fh:
+                    data = _merge(data, tomllib.load(fh))
+            except tomllib.TOMLDecodeError as e:
+                raise ConfigError(f"{c} is not valid TOML: {e}") from e
+            except OSError as e:
+                raise ConfigError(f"cannot read {c}: {e}") from e
             break
     # TOML has no null; allow "none"/-1 for optional pins/devices
     for sec, key in [("hardware", "mute_button_gpio"), ("hardware", "led_gpio")]:
         if data[sec][key] in ("none", "", -1):
             data[sec][key] = None
+    _check(data)
     return Config(data)
+
+
+def _check(data: dict) -> None:
+    """Put obviously impossible settings back to something safe and say so.  A wrong number in a
+    settings file must never leave the child with a toy that does nothing (finding L1)."""
+    limit = data["parental"].get("daily_limit_minutes")
+    if isinstance(limit, (int, float)) and limit < 0:
+        log.warning("[parental] daily_limit_minutes = %s is negative; treating it as 0 (no limit).", limit)
+        data["parental"]["daily_limit_minutes"] = 0
+    qh = data["parental"].get("quiet_hours") or ""
+    if qh and not re.fullmatch(r"\d{1,2}:\d{2}-\d{1,2}:\d{2}", str(qh).strip()):
+        log.warning("[parental] quiet_hours = %r is not like '21:00-06:30'; ignoring it.", qh)
+        data["parental"]["quiet_hours"] = ""
+    age = data["child"].get("age")
+    if not isinstance(age, (int, float)) or not 2 <= age <= 12:
+        log.warning("[child] age = %r is outside 2-12; using 5.", age)
+        data["child"]["age"] = 5
+    mc = data["nlu"].get("min_confidence")
+    if not isinstance(mc, (int, float)) or not 0.0 <= mc <= 1.0:
+        # Above 1.0 nothing can ever clear the bar, so Buddy would understand nothing at all.
+        log.warning("[nlu] min_confidence = %r is outside 0.0-1.0; using 0 (off).", mc)
+        data["nlu"]["min_confidence"] = 0.0
+    fb = data["nlu"].get("fallback")
+    if fb and str(fb).lower() != "none":
+        log.warning("[nlu] fallback = %r is not available; using none.", fb)
+        data["nlu"]["fallback"] = "none"

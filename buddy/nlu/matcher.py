@@ -63,7 +63,7 @@ KEYWORDS = {
     # controls added for pause / continue / quit
     "continue", "resume", "wait", "quit", "exit", "countdown",
     # "count in threes" etc. (so the step words are never snapped to other words)
-    "ones", "threes", "fours", "sixes", "sevens", "eights", "nines",
+    "ones", "threes", "fours", "sixes", "sevens", "eights", "nines", "step", "steps",
 }
 
 LETTER_WORDS = {
@@ -82,6 +82,30 @@ LETTER_WORDS = {k: v for k, v in LETTER_WORDS.items() if v}
 AMBIGUOUS_LETTER_WORDS = {"a", "i", "you", "be", "see", "sea", "are", "ar", "why", "oh", "owe", "eye", "tea",
                           "tee", "pea", "pee", "bee", "queue", "cue", "age", "ex", "gee", "jay", "kay", "el",
                           "en", "em", "es", "ess", "ay", "ee"}
+
+# The *second* matching pass snaps every word, including ordinary English the first pass kept on
+# purpose.  That last resort is what turned "call mummy" into breathing ("call"->"calm", 0.84) and
+# "show me my ears" into a horse ("ears"->"horses", 0.80).  It may still overrule an everyday word
+# when the match is strong enough to really be that keyword, but not on a loose resemblance.
+# Measured on tests/test_nlu.py and the QA probe (see docs/FIXES.md): every value from 0.80 to
+# "never" gives exactly the same results on all 353 cases, i.e. nothing Buddy understands today
+# relies on the loose rewrite.  0.9 matches the bar already used for the control words below.
+VOCAB_NEED = 0.90
+# An ordinary English word recognised this clearly is taken as said, and is never replaced by a
+# keyword that happens to be a little closer ("set" is "said", not the quiz keyword "test").
+HEARD_CLEARLY = 0.90
+# No word Buddy knows is anywhere near this long, so a longer token cannot match one.  Guards the
+# quadratic phoneme comparison against an unbounded input (finding M8).
+MAX_SNAP_LEN = 32
+
+# Body parts: content/lessons.json names them in the plural ("eyes"), but a child asks "where is
+# my nose" or "my tummy".  Singulars map to the lesson's own entry; the rest have no line of their
+# own, so they open the body lesson, exactly as the words "body parts" already do (finding M5).
+BODY_SINGULAR = {"eye": "eyes", "ear": "ears", "hand": "hands", "leg": "legs", "foot": "feet",
+                 "tooth": "teeth"}
+BODY_OTHER = {"tummy", "belly", "face", "hair", "finger", "fingers", "toe", "toes", "knee",
+              "knees", "arm", "arms", "elbow", "shoulder", "shoulders", "chin", "cheek", "cheeks",
+              "thumb"}
 
 NUMBER_WORDS = set(WORD_VALUES) | {"hundred", "thousand"}
 CONTROL_WORDS = {"stop", "enough", "shush", "shh", "pause", "cancel", "louder", "softer", "quieter", "repeat",
@@ -105,6 +129,12 @@ PRIORITY = ["stop", "pause", "continue", "quit", "volume_up", "volume_down", "re
             "breathing", "manners", "feeling", "name", "age", "how_are_you", "love", "thanks", "sorry",
             "good_morning", "good_night", "goodbye", "hello", "faq", "story", "poem", "song", "curiosity"]
 _PRIO = {n: i for i, n in enumerate(PRIORITY)}
+# Intents that are only ever started by a word of Buddy's own vocabulary.  Everything else
+# (the controls, small talk, the FAQ, a sum, a letter) is matched on the words as they were
+# actually said, so a word the snapper guessed at is never the only reason one of those fires.
+KEYWORD_INTENTS = {"story", "poem", "song", "count", "table", "alphabet", "colors", "color_of",
+                   "shapes", "body", "days", "months", "opposites", "opposite_of", "animal_sound",
+                   "animal_fact", "quiz", "riddle", "joke", "breathing", "manners"}
 
 
 @dataclass
@@ -120,11 +150,17 @@ class Intent:
 
 
 class Matcher:
-    def __init__(self, content: Content, age: float = 5.0, word_threshold: float | None = None):
+    def __init__(self, content: Content, age: float = 5.0, word_threshold: float | None = None,
+                 min_confidence: float = 0.0):
         self.content = content
+        # [nlu] min_confidence: how clearly the words of a request must have been heard before
+        # Buddy will start an activity on them.  0 = off (every guess is acted on).
+        self.min_confidence = float(min_confidence or 0.0)
         self.phon = ChildPhonology(age)
         # younger children -> more lenient snapping
         self.word_threshold = word_threshold or (0.62 if age < 5 else 0.68)
+        self.vocab_threshold = VOCAB_NEED
+        self.heard_clearly = HEARD_CLEARLY
         self.animal_by_name: dict[str, str] = {}
         for a in content.animals:
             for n in a["names"] + [a["id"]]:
@@ -137,6 +173,8 @@ class Matcher:
             if base and base not in ("sing", "call", "crow"):
                 self.sound_verbs |= {v, base}
         self.color_names = {c["name"] for c in content.lessons["colors"]}
+        self.body_names = {b["name"] for b in content.lessons["body_parts"]}
+        self.body_words = self.body_names | set(BODY_SINGULAR) | BODY_OTHER
         self.shape_names = {s["name"] for s in content.lessons["shapes"]}
         self.opposite_of: dict[str, str] = {}
         for a, b in content.lessons["opposites"]:
@@ -170,6 +208,8 @@ class Matcher:
             return self._snap_cache[tok]
         if tok in self._vocab_ph or tok in STOPWORDS or tok in NUMBER_WORDS or tok.isdigit() or len(tok) < 2:
             res = (tok, 1.0)
+        elif len(tok) > MAX_SNAP_LEN:
+            res = (tok, 1.0)  # far longer than any word Buddy knows: nothing to compare it with
         elif len(g2p(tok)) < 2:
             res = (tok, 1.0)  # too little evidence to snap ("zzz", "qqq")
         else:
@@ -184,8 +224,9 @@ class Matcher:
                     best, best_s = w, s
                 if w in self._vocab_ph and s > vbest_s:
                     vbest, vbest_s = w, s
-            # prefer a content word when it is almost as close as a function word
-            if best not in self._vocab_ph and vbest_s >= best_s - 0.08:
+            # Prefer a content word when it is almost as close as a function word - unless the
+            # ordinary word was itself heard clearly, in which case that is simply what was said.
+            if best not in self._vocab_ph and vbest_s >= best_s - 0.08 and best_s < self.heard_clearly:
                 best, best_s = vbest, vbest_s
             need = 0.9 if best in CONTROL_WORDS else self.word_threshold  # never stop by accident
             res = (best, best_s) if best_s >= need else (tok, 1.0)
@@ -199,7 +240,15 @@ class Matcher:
 
     def canonicalize(self, tokens: list[str], aggressive: bool = True) -> tuple[list[str], float]:
         """Snap tokens onto the vocabulary.  aggressive=False keeps every known word as it is."""
+        out, conf, _ = self.canonicalize_scored(tokens, aggressive)
+        return out, conf
+
+    def canonicalize_scored(self, tokens: list[str], aggressive: bool = True) \
+            -> tuple[list[str], float, dict[str, float]]:
+        """As canonicalize(), plus how clearly each resulting word was heard (1.0 = exactly as
+        said).  A word Buddy only *guessed* at should not outrank one the child really said."""
         out: list[str] = []
+        heard: dict[str, float] = {}
         conf = 1.0
         i = 0
         while i < len(tokens):
@@ -216,14 +265,19 @@ class Matcher:
                 m, s = self.snap(merged)
                 if (m in self._vocab_ph and s >= 0.85) or merged in self._vocab_ph:
                     out.append(m)
+                    heard[m] = min(heard.get(m, 1.0), s)
                     conf = min(conf, s)
                     i += 2
                     continue
             m, s = self.snap(t)
+            if aggressive and m != t and m in self._vocab_ph and s < self.vocab_threshold \
+                    and self.is_known(t):
+                m, s = t, 1.0  # everyday English: only a clear match may turn it into a keyword
             out.append(m)
+            heard[m] = min(heard.get(m, 1.0), s)
             conf = min(conf, s)
             i += 1
-        return out, conf
+        return out, conf, heard
 
     def best_title(self, toks: list[str], kinds=("poem", "story")) -> tuple[str | None, str | None, float]:
         """Soft match of multi-word titles/aliases against the utterance."""
@@ -329,31 +383,74 @@ class Matcher:
         raw = normalize(text)
         raw = [t for t in raw if t not in FILLER]
         if not raw:
-            return Intent("none", {}, 0.0, [], 0.0)
-        toks, conf = self.canonicalize(raw, aggressive=False)
-        best = self._decide(raw, toks, conf)
+            # Something was said but no word came out of it (punctuation, another script, only
+            # fillers): that is speech Buddy could not understand, not silence, so it gets the
+            # "I didn't catch that" reply.  True silence never reaches here (see engine.on_text).
+            return Intent("unknown" if text and text.strip() else "none", {}, 0.0, [], 0.0)
+        toks, conf, heard = self.canonicalize_scored(raw, aggressive=False)
+        best = self._decide(raw, toks, conf, heard)
         if best.score < 0.6:  # nothing (or only a weak guess): snap every word, as before
-            toks2, conf2 = self.canonicalize(raw, aggressive=True)
+            toks2, conf2, heard2 = self.canonicalize_scored(raw, aggressive=True)
             if toks2 != toks:
-                alt = self._decide(raw, toks2, conf2)
+                alt = self._decide(raw, toks2, conf2, heard2)
                 if alt.score * 0.97 > best.score:
                     best = alt
+        # Too unsure to start an activity: say so instead of guessing one (finding M4).
+        # Controls, small talk, sums and letters are matched on the words as said, so they are
+        # not affected; only the keyword-driven activities are.
+        if best.name in KEYWORD_INTENTS and best.confidence < self.min_confidence:
+            best = Intent("unknown", {}, best.confidence, best.tokens, 0.0)
         if best.name == "unknown" and self.fallback is not None:
             res = self.fallback.classify(text, raw)
             if res:
                 best = Intent(res[0], dict(res[1]), 0.5, raw, 0.5)
         return best
 
-    def _decide(self, raw: list[str], toks: list[str], conf: float) -> Intent:
+    def _decide(self, raw: list[str], toks: list[str], conf: float,
+                heard: dict[str, float] | None = None) -> Intent:
         """Score every intent the words point to; return the best one with its parameters."""
         if not toks:
             return Intent("none", {}, 0.0, toks, 0.0)
+        heard = heard or {}
+
+        def clearly(words) -> float:
+            """How clearly the word that fires an intent was heard (1.0 = said, not guessed).
+            Keeps a word Buddy only guessed at from outranking one the child really said:
+            in "teww me a poem", "teww" resembles "tale", but "poem" was said outright."""
+            hits = [heard.get(t, 1.0) for t in toks if t in words]
+            return max(hits) if hits else 1.0
         s = set(toks)
         joined = " " + " ".join(toks) + " "
         n = len(toks)
         short = n <= 4
+        # Buddy's vocabulary is small, so the snapper will always map *some* nonsense onto a
+        # keyword.  That guess may start an activity when it is the child's whole request
+        # ("tolours" is plainly "colours"), but not when the rest of the utterance made no sense
+        # either: then the keyword is an artefact of the snapper, not something that was said.
+        # "florp bimble wug" used to recite the days of the week (finding M4).
+        _known = set(self._vocab_ph) | self.body_words | NUMBER_WORDS
+        _kw = [t for t in toks if t in self._vocab_ph]
+        _unresolved = [t for t in toks if len(t) > 1 and t not in _known and t not in STOPWORDS
+                       and not t.isdigit()]
+        # Only when part of the utterance made no sense at all does the keyword have to have been
+        # heard clearly; on its own a guess is still trusted ("tolours" is plainly "colours").
+        guessed_only = (bool(_kw) and bool(_unresolved)
+                        and max(heard.get(t, 1.0) for t in _kw) < self.vocab_threshold)
+
+        def pick(cs):
+            if guessed_only:
+                cs = [c for c in cs if c[2].name not in KEYWORD_INTENTS]
+            if not cs:
+                return Intent("unknown", {}, conf, toks, 0.0)
+            return max(cs, key=lambda c: (c[0], c[1]))[2]
         nums = [v for v, _, _ in parse_numbers(toks)]
         neg = self._negated(toks)
+        # "what story do you know" is a request, not a question - but only when the story word was
+        # really heard: a guessed one stopped "who is the prime minister" from being a question at
+        # all ("minister" resembles "months", "prime" resembles "rhyme").  Finding M4.
+        _told = {"story", "poem", "rhyme", "song", "sing"}
+        is_question = raw[0] in ("why", "how", "where", "when") or "wonder" in raw or \
+            (raw[0] in QUESTION_WORDS and not (s & _told and clearly(_told) >= 0.99))
         cands: list[tuple[float, int, Intent]] = []
 
         def add(score: float, name: str, **slots) -> None:
@@ -455,6 +552,13 @@ class Matcher:
             add(0.88, "shapes", shape=next((t for t in toks if t in self.shape_names), None))
         if "body" in s or re.search(r" body parts? ", joined):
             add(0.88, "body")
+        elif s & self.body_words and clearly(self.body_words) >= 0.99 \
+                and not [t for t in toks if t not in STOPWORDS and t not in self.body_words]:
+            # "where is my nose", "show me my ears", "my tummy" - but not a passing mention in a
+            # sentence about something else ("set a brush teeth timer", "i brush my teeth").
+            part = next((t for t in toks if t in self.body_names), None) \
+                or next((BODY_SINGULAR[t] for t in toks if t in BODY_SINGULAR), None)
+            add(0.88, "body", part=part)
         if s & {"days", "week"}:
             add(0.88, "days")
         if s & {"months", "month"} or re.search(r" months of the year ", joined):
@@ -483,8 +587,11 @@ class Matcher:
             add(0.9, "animal_sound", animal=animal)  # "how does a dog bark", "make the lion roar"
         elif s & {"animal", "animals"}:
             add(0.85, "animal_sound", animal=animal)
-        elif animal and n <= 3:
-            add(0.82, "animal_sound", animal=animal)  # just "monkey!" (beats the poem/story title match)
+        elif animal and n <= 3 and clearly(self.animal_by_name) >= 0.99:
+            # just "monkey!" (beats the poem/story title match).  Only when the name was said as
+            # it is: a guessed-at name turned "order a pizza" into a horse and "abra ka dabra"
+            # into a snake (finding M4).
+            add(0.82, "animal_sound", animal=animal)
 
         # ---- wellbeing, manners
         if s & {"breathe", "breathing", "calm", "relax"}:
@@ -518,8 +625,6 @@ class Matcher:
             add(0.7, "hello")
 
         # ---- open "why / how / where / when" questions -> small FAQ or curiosity response
-        is_question = raw[0] in ("why", "how", "where", "when") or "wonder" in raw or \
-            (raw[0] in QUESTION_WORDS and not s & {"story", "poem", "rhyme", "song", "sing"})
         if is_question:
             faq = self.match_faq(raw)
             if faq is not None:
@@ -530,18 +635,18 @@ class Matcher:
         # ---- stories / poems / songs (a title, a topic after "about", or a random one)
         # (a "why/how/where/when" question is answered above and never turns into a story)
         if raw[0] in ("why", "how", "where", "when") or "wonder" in raw:
-            return max(cands, key=lambda c: (c[0], c[1]))[2] if cands else Intent("unknown", {}, conf, toks, 0.0)
+            return pick(cands)
         kind, tid, score = self.best_title(toks)
         topic = self._topic(toks)
         if s & STORY_WORDS:
             sid = tid if kind == "story" and score >= 0.8 else None
-            add(0.9, "story", id=sid, topic=None if sid else topic)
+            add(0.9 * clearly(STORY_WORDS), "story", id=sid, topic=None if sid else topic)
         if s & POEM_WORDS:
             pid = tid if kind == "poem" and score >= 0.8 else None
-            add(0.9, "poem", id=pid, topic=None if pid else topic)
+            add(0.9 * clearly(POEM_WORDS), "poem", id=pid, topic=None if pid else topic)
         if s & SONG_WORDS:
             pid = tid if kind == "poem" and score >= 0.8 else None
-            add(0.9, "song", id=pid, topic=None if pid else topic)
+            add(0.9 * clearly(SONG_WORDS), "song", id=pid, topic=None if pid else topic)
         if kind and score >= 0.9 and not is_question:
             add(0.8, kind, id=tid)
         if s & {"teach", "learn"}:
@@ -549,9 +654,7 @@ class Matcher:
         if is_question:
             add(0.35, "curiosity")
 
-        if not cands:
-            return Intent("unknown", {}, conf, toks, 0.0)
-        return max(cands, key=lambda c: (c[0], c[1]))[2]
+        return pick(cands)
 
     @staticmethod
     def _feeling(raw: list[str], s: set[str]) -> str | None:

@@ -18,6 +18,8 @@ from typing import Optional
 from .normalize import WORD_VALUES, parse_numbers
 
 RANGE_JOINERS = {"to", "till", "til", "until", "through", "thru", "upto", "dash", "minus"}
+STEP_NOUNS = {"step", "steps", "jump", "jumps", "skip", "skips", "lot", "lots", "group", "groups"}
+NEGATIVE_CUES = {"minus", "negative"}
 STEP_PLURALS = {"ones": 1, "twos": 2, "threes": 3, "fours": 4, "fives": 5, "sixes": 6, "sevens": 7,
                 "eights": 8, "nines": 9, "tens": 10}
 BACKWARD_CUES = {"backwards", "backward", "countdown", "reverse"}
@@ -62,6 +64,16 @@ def count_slots(tokens: list[str]) -> CountSlots:
         if t in STEP_PLURALS:
             out.step = STEP_PLURALS[t]
             used.add(i)
+        elif t in STEP_NOUNS:
+            j = i + 1
+            if j < len(toks) and toks[j] == "of":
+                j += 1
+            v = _num_at(toks, j)
+            if v is not None and 1 <= v <= 100:  # "in steps of ten", "steps of 2", "jumps of five"
+                out.step = v
+                used.update(range(i, j + 1))
+                if i > 0 and toks[i - 1] in ("by", "in", "with", "of"):
+                    used.add(i - 1)
         elif t in ("by", "in") and i + 1 < len(toks):
             v = _num_at(toks, i + 1)
             if v is not None and 1 <= v <= 100:
@@ -79,6 +91,7 @@ def count_slots(tokens: list[str]) -> CountSlots:
         if first != last and (last > 2 or out.backwards):  # "from one two ten" = "from one to ten"
             out.start, out.end, out.has_range = first, last, True
             return out
+    nums = [(-v if _negated_at(toks, a) else v, a, b) for v, a, b in nums]
     if len(nums) >= 2:
         (a, ai, aj), (b, bi, _bj) = nums[0], nums[1]
         between = set(toks[aj:bi])
@@ -101,6 +114,15 @@ def count_slots(tokens: list[str]) -> CountSlots:
         else:
             out.end = v  # "count 10"
     return out
+
+
+def _negated_at(toks: list[str], i: int) -> bool:
+    """True for the "minus five" of "count from minus five to five" - a sign, not a subtraction
+    (which always has a number in front of the minus)."""
+    if i == 0 or toks[i - 1] not in NEGATIVE_CUES:
+        return False
+    before = toks[max(0, i - 3):i - 1]
+    return bool(before) and not any(t.isdigit() or t in WORD_VALUES for t in before)
 
 
 def number_range(tokens: list[str]) -> Optional[tuple[int, int]]:

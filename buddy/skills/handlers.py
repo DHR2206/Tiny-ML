@@ -79,10 +79,10 @@ class Skills:
         return Response([Say(self.p("quit"))], action="quit", repeatable=False, after="sleep")
 
     def do_volume_up(self, i: Intent) -> Response:
-        return Response([], action="volume_up", repeatable=False)
+        return Response([Say(self.p("louder"))], action="volume_up", repeatable=False)
 
     def do_volume_down(self, i: Intent) -> Response:
-        return Response([], action="volume_down", repeatable=False)
+        return Response([Say(self.p("softer"))], action="volume_down", repeatable=False)
 
     def do_repeat(self, i: Intent) -> Response:
         return Response([], action="repeat", repeatable=False)
@@ -163,8 +163,8 @@ class Skills:
     def do_phonics(self, i: Intent) -> Response:
         letter = i.slots.get("letter")
         items = self.c.lessons["letters"]
-        if letter:
-            item = next(x for x in items if x["l"] == letter)
+        item = next((x for x in items if x["l"] == letter), None) if letter else None
+        if item is not None:
             return Response([Say(self._letter_line(item))], meta={"letter": letter})
         r = Response([Say(self.p("phonics_intro"), 0.5)])
         for item in items:
@@ -180,6 +180,10 @@ class Skills:
         back = bool(i.slots.get("backwards"))
         start = i.slots.get("start")
         end = i.slots.get("end")
+        if start is not None and start < 0:  # Buddy counts from zero up (finding M3)
+            start = 0
+        if end is not None and end < 0:
+            end = 0
         if (start or 0) > MAX_COUNT and (end is None or end > MAX_COUNT):
             return Response([Say(self.p("count_too_big"))])
         r = Response([Say(self.p("counting_intro"), 0.4)])
@@ -233,7 +237,12 @@ class Skills:
         return f"{number_to_words(a).capitalize()} times {number_to_words(b)} is {number_to_words(a * b)}."
 
     def do_math(self, i: Intent) -> Response:
-        a, b, op = i.slots["a"], i.slots["b"], i.slots["op"]
+        a, b, op = i.slots.get("a"), i.slots.get("b"), i.slots.get("op")
+        if a is None or b is None or op not in ("plus", "minus", "times"):
+            op = op if op in ("plus", "minus", "times") else "plus"
+            a, b = self.rng.randint(1, 10), self.rng.randint(1, 9)  # "another one": a fresh sum
+            if op == "minus" and b > a:
+                a, b = b, a
         if op == "times" and not (0 <= a <= MAX_TABLE and 0 <= b <= MAX_TABLE):
             return Response([Say("Wow, those are big numbers! I know my times tables up to twelve.")])
         if op != "times" and not (0 <= a <= MAX_SUM and 0 <= b <= MAX_SUM):
@@ -265,8 +274,12 @@ class Skills:
         return r
 
     def do_animal_fact(self, i: Intent) -> Response:
-        a = self.c.animal(i.slots["animal"])
-        return Response([Say(a["fact"], 0.3)] + self._animal_items(a, with_fact=False))
+        a = self._animal(i.slots.get("animal")) or self.rng.choice(self.c.animals)
+        return Response([Say(a["fact"], 0.3)] + self._animal_items(a, with_fact=False),
+                        meta={"animal": a["id"]})
+
+    def _animal(self, aid: str | None) -> dict | None:
+        return next((a for a in self.c.animals if a["id"] == aid), None) if aid else None
 
     # ------------------------------------------------------------- lessons
     def do_colors(self, i: Intent) -> Response:
@@ -281,9 +294,11 @@ class Skills:
         return f"{col['name'].capitalize()}! {t[0].capitalize()} is {col['name']}, and {t[1]} is {col['name']} too."
 
     def do_color_of(self, i: Intent) -> Response:
-        thing = i.slots["thing"]
-        col = dict(self.c.lessons["fruit_colors"])[thing]
-        return Response([Say(self.color_fact(thing, col))])
+        pairs = dict(self.c.lessons["fruit_colors"])
+        thing = i.slots.get("thing")
+        if thing not in pairs:  # no thing named ("another one"): a fresh one
+            thing = self.rng.choice(sorted(pairs))
+        return Response([Say(self.color_fact(thing, pairs[thing]))])
 
     @staticmethod
     def color_fact(thing: str, col: str) -> str:
@@ -293,16 +308,23 @@ class Skills:
     def do_shapes(self, i: Intent) -> Response:
         shape = i.slots.get("shape")
         shapes = self.c.lessons["shapes"]
-        if shape:
-            return Response([Say(next(s for s in shapes if s["name"] == shape)["desc"])])
+        found = next((s for s in shapes if s["name"] == shape), None) if shape else None
+        if found is not None:
+            return Response([Say(found["desc"])])
         r = Response([Say(self.p("shapes_intro"), 0.4)])
         for s in shapes:
             r.items.append(Say(s["desc"], 0.45))
         return r
 
     def do_body(self, i: Intent) -> Response:
+        parts = self.c.lessons["body_parts"]
+        part = i.slots.get("part")
+        if part:  # one part was asked about ("where is my nose"), as do_shapes does for a shape
+            item = next((b for b in parts if b["name"] == part), None)
+            if item:
+                return Response([Say(item["use"])])
         r = Response([Say(self.p("body_intro"), 0.4)])
-        for b in self.c.lessons["body_parts"]:
+        for b in parts:
             r.items.append(Say(b["use"], 0.4))
         return r
 
@@ -315,7 +337,9 @@ class Skills:
                          Say(", ".join(m[6:]) + ".")])
 
     def do_opposite_of(self, i: Intent) -> Response:
-        word = i.slots["word"]
+        word = i.slots.get("word")
+        if word not in self.m.opposite_of:  # no word named ("another one"): a fresh pair
+            word = self.rng.choice(sorted(self.m.opposite_of))
         other = self.m.opposite_of[word]
         return Response([Say(self.opposite_line(word, other))])
 
@@ -417,7 +441,10 @@ class Skills:
         return Response([Say(self.p("manners"))])
 
     def do_feeling(self, i: Intent) -> Response:
-        return Response([Say(self.p("feel_" + i.slots["mood"]))])
+        mood = i.slots.get("mood")
+        if "feel_" + str(mood) not in self.c.phrases:  # no mood heard: ask how they are
+            return Response([Say(self.p("how_are_you"))])
+        return Response([Say(self.p("feel_" + mood))])
 
     # ------------------------------------------------------------- small talk
     def _simple(self, key: str) -> Callable[[Intent], Response]:
@@ -439,7 +466,11 @@ class Skills:
 
     # ------------------------------------------------------------- questions
     def do_faq(self, i: Intent) -> Response:
-        return Response([Say(self.c.talk["faq"][i.slots["index"]]["a"], 0.4), Say("Isn't that amazing?")])
+        faq = self.c.talk["faq"]
+        idx = i.slots.get("index")
+        if not isinstance(idx, int) or not 0 <= idx < len(faq):
+            return self.do_curiosity(i)  # no question matched ("another one"): keep it honest
+        return Response([Say(faq[idx]["a"], 0.4), Say("Isn't that amazing?")])
 
     def do_curiosity(self, i: Intent) -> Response:
         return Response([Say(self.p("curiosity"))])
@@ -450,7 +481,9 @@ class Skills:
         return Response([Say(self.p(key))], repeatable=False, after="silent")
 
     def do_none(self, i: Intent) -> Response:
-        return Response([], repeatable=False)
+        """Nothing usable in the input (empty or only punctuation).  Buddy answers the same way
+        as for anything else it could not understand, rather than saying nothing at all."""
+        return self.do_unknown(i)
 
     # ------------------------------------------------------------- inventory
     def all_phrases(self) -> set[str]:

@@ -29,7 +29,7 @@ _PLURALS = {1: "ones", 2: "twos", 3: "threes", 4: "fours", 5: "fives", 6: "sixes
 
 WORD_VALUES = {w: i for i, w in enumerate(_ONES)}
 WORD_VALUES.update({w: i * 10 for i, w in enumerate(_TENS) if w})
-WORD_VALUES.update({"hundred": 100, "fourty": 40, "twelf": 12})
+WORD_VALUES.update({"hundred": 100, "thousand": 1000, "fourty": 40, "twelf": 12})
 # Child / recogniser variants that are only trusted when a number is *expected*
 # (e.g. answering "what comes after two?")
 LENIENT_VALUES = dict(WORD_VALUES)
@@ -38,6 +38,11 @@ LENIENT_VALUES.update({"won": 1, "ate": 8, "tree": 3, "free": 3, "sree": 3, "fwe
                        "sewen": 7, "seben": 7, "tirty": 30, "firty": 30, "fifdy": 50,
                        "to": 2, "too": 2, "for": 4, "fore": 4, "tree's": 3, "nothing": 0,
                        "none": 0, "tan": 10, "then": 10, "hate": 8, "wan": 1})
+
+# No English word comes near this length, and the recogniser does not emit one.  Capping the
+# token here keeps every later step (phoneme mapping, title and FAQ matching, all of which
+# compare character by character) bounded, instead of growing with the input (finding M8).
+MAX_TOKEN_CHARS = 32
 
 FILLERS = {
     "um", "umm", "uh", "uhh", "hmm", "mm", "er", "erm", "ah", "oh", "like", "please", "pls",
@@ -77,7 +82,7 @@ def normalize(text: str) -> list[str]:
     for w in t.split():
         w = CONTRACTIONS.get(w, w)
         toks.extend(w.split())
-    return [w.strip("'") for w in toks if w.strip("'")]
+    return [w.strip("'")[:MAX_TOKEN_CHARS] for w in toks if w.strip("'")]
 
 
 def strip_fillers(tokens: list[str]) -> list[str]:
@@ -108,6 +113,13 @@ def parse_numbers(tokens: list[str], lenient: bool = False) -> list[tuple[int, i
             # "one hundred", "hundred and five"
             if j < n and tokens[j] == "hundred" and val < 10:
                 val *= 100
+                j += 1
+                if j < n and tokens[j] == "and":
+                    j += 1
+            # "one thousand", "two thousand and five" - without this "one thousand" read as 1,
+            # so Buddy said only "One." instead of clamping like the digit form (finding M3).
+            if j < n and tokens[j] == "thousand" and 0 < val < 1000:
+                val *= 1000
                 j += 1
                 if j < n and tokens[j] == "and":
                     j += 1

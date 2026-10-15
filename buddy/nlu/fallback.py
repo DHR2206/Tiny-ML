@@ -11,7 +11,10 @@ Select it with   [nlu] fallback = "none"   in buddy.toml ("none" is the only opt
 """
 from __future__ import annotations
 
+import logging
 from typing import Optional, Protocol
+
+log = logging.getLogger(__name__)
 
 
 class IntentFallback(Protocol):
@@ -22,4 +25,7 @@ class IntentFallback(Protocol):
 def load_fallback(name: str | None) -> Optional[IntentFallback]:
     if not name or str(name).lower() == "none":
         return None
-    raise ValueError(f"Unknown [nlu] fallback {name!r}. Only 'none' is available in this version.")
+    # A typo here used to raise out of Brain.__init__, so Buddy would not start at all.  The
+    # rules understand every command on their own, so warn and carry on without a fallback.
+    log.warning("Unknown [nlu] fallback %r - ignored. Only 'none' is available in this version.", name)
+    return None

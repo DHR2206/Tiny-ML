@@ -6,4 +6,4 @@ Pipeline:  microphone -> VAD -> on-device ASR -> wake/intent matching (child-pho
 Everything runs locally on a Raspberry Pi 5. No audio is ever written to disk or sent anywhere.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"

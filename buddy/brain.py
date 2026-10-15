@@ -35,7 +35,8 @@ class Brain:
         self.cfg = cfg
         self.content = content or Content()
         self.rng = rng or random.Random()
-        self.matcher = Matcher(self.content, age=cfg.child_age)
+        self.matcher = Matcher(self.content, age=cfg.child_age,
+                               min_confidence=cfg["nlu"].get("min_confidence") or 0.0)
         self.matcher.fallback = load_fallback(cfg["nlu"].get("fallback"))
         self.wake = WakeMatcher(cfg["wake"]["phrases"], self.matcher.phon, cfg["wake"]["threshold"])
         self.wake.validator = lambda rest: bool(rest) and self.matcher.parse(rest).name not in (
@@ -61,7 +62,9 @@ class Brain:
             return Response([Say(self.skills.p("quiet_hours"))], repeatable=False, intent="quiet_hours",
                             after="sleep")
         limit = float(self.cfg["parental"].get("daily_limit_minutes") or 0)
-        if limit and self.progress.usage_today() >= limit * 60:
+        # > 0, not just "set": a negative limit used to be true at zero usage, so the child got
+        # nothing but the break message all day (finding L1).
+        if limit > 0 and self.progress.usage_today() >= limit * 60:
             return Response([Say(self.skills.p("daily_limit"))], repeatable=False, intent="daily_limit",
                             after="sleep")
         return None
