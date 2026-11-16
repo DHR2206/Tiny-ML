@@ -120,6 +120,22 @@ CONTENT_WORDS = {"story", "stories", "poem", "poems", "rhyme", "rhymes", "song",
 STORY_WORDS = {"story", "stories", "tale", "bedtime"}
 POEM_WORDS = {"poem", "poems", "rhyme", "rhymes", "poetry", "nursery"}
 SONG_WORDS = {"song", "songs", "sing", "music"}
+# Shape names that are also everyday things ("what is a star" is about the sky, "tell me about the
+# heart" about the body): they only mean the shape when the word "shape" is said too.
+AMBIGUOUS_SHAPES = {"star", "heart", "diamond"}
+# "i fell and hurt my knee", "i am sick": tell a grown-up (never a cheerful "thank you for telling me")
+HURT_WORDS = {"hurt", "hurts", "hurting", "sick", "ill", "pain", "bleeding", "bleed", "ouch", "injured", "fever"}
+# Title words too general to say which poem a child wants ("sing twinkle twinkle little star").
+GENERIC_TITLE_WORDS = {"little", "big", "my", "good", "hello", "one", "ten", "red", "grey", "in", "that", "way",
+                       "well", "kind", "lost", "tiny", "together", "grows", "shared", "baby", "clever"}
+# Things Buddy cannot do.  Said clearly, they get an honest "I can't do that yet" instead of a
+# guessed activity ("spell cat" used to make a cat sound).
+CANT_DO = re.compile(
+    r" spell | spelling | draw | drawing | paint "
+    r"| (call|phone|ring) (my )?(mummy|mommy|mom|mum|daddy|dad|papa|mama|grandma|grandpa"
+    r"|nani|dadi|nana|dada|granny) | (turn|switch) on | lights? (on|off) | youtube | television "
+    r"| (play|put on|show me|watch) (a |me |some )?(video|videos|cartoon|cartoons|movie|movies|tv) "
+    r"| hide and seek | alarm | (order|buy) | search | google ")
 FILLER = {"um", "umm", "uh", "hmm", "please", "buddy"}
 
 # Tie-break order when two intents get the same score (earlier wins).
@@ -127,14 +143,15 @@ PRIORITY = ["stop", "pause", "continue", "quit", "volume_up", "volume_down", "re
             "math", "quiz", "riddle", "joke", "table", "count", "phonics", "alphabet", "color_of", "colors",
             "shapes", "body", "days", "months", "opposite_of", "opposites", "animal_fact", "animal_sound",
             "breathing", "manners", "feeling", "name", "age", "how_are_you", "love", "thanks", "sorry",
-            "good_morning", "good_night", "goodbye", "hello", "faq", "story", "poem", "song", "curiosity"]
+            "good_morning", "good_night", "goodbye", "hello", "faq", "topic", "cant_do", "story", "poem", "song",
+            "curiosity", "chat"]
 _PRIO = {n: i for i, n in enumerate(PRIORITY)}
 # Intents that are only ever started by a word of Buddy's own vocabulary.  Everything else
 # (the controls, small talk, the FAQ, a sum, a letter) is matched on the words as they were
 # actually said, so a word the snapper guessed at is never the only reason one of those fires.
 KEYWORD_INTENTS = {"story", "poem", "song", "count", "table", "alphabet", "colors", "color_of",
                    "shapes", "body", "days", "months", "opposites", "opposite_of", "animal_sound",
-                   "animal_fact", "quiz", "riddle", "joke", "breathing", "manners"}
+                   "animal_fact", "quiz", "riddle", "joke", "breathing", "manners", "topic"}
 
 
 @dataclass
@@ -176,6 +193,11 @@ class Matcher:
         self.body_names = {b["name"] for b in content.lessons["body_parts"]}
         self.body_words = self.body_names | set(BODY_SINGULAR) | BODY_OTHER
         self.shape_names = {s["name"] for s in content.lessons["shapes"]}
+        # things Buddy knows a little about (content/talk.json "topics"): "tell me about the moon"
+        self.topic_by_name: dict[str, str] = {}
+        for tp in content.talk.get("topics", []):
+            for n in tp["names"]:
+                self.topic_by_name[n] = tp["id"]
         self.opposite_of: dict[str, str] = {}
         for a, b in content.lessons["opposites"]:
             self.opposite_of.setdefault(a, b)
@@ -185,11 +207,17 @@ class Matcher:
         vocab |= {w for t in self._titles() for w in t[2].split() if w not in TITLE_STOP and len(w) > 2}
         vocab |= {"elephant", "alphabet"}
         vocab |= {f for f, _ in content.lessons["fruit_colors"]}
+        # Topic words are taken as said, but are NOT snapping targets: as targets they pulled a
+        # child's mispronounced words away from the keywords they meant ("monty" -> "mountain"
+        # instead of "monkey").
+        self.topic_words = {w for n in self.topic_by_name for w in n.split()} - set(vocab)
         self.vocab = sorted(vocab)
         self._vocab_ph = {w: g2p(w) for w in self.vocab}
         # snapping targets also include ordinary words, so "pway" -> "play" rather than a keyword
         self._target_ph = dict(self._vocab_ph)
         self._target_ph.update({w: g2p(w) for w in STOPWORDS if len(w) > 1})
+        self._title_words = {w for t in self._titles() for w in t[2].split()
+                             if w not in TITLE_STOP and w not in GENERIC_TITLE_WORDS and len(w) > 2}
         self._snap_cache: dict[str, tuple[str, float]] = {}
         self.fallback = None  # optional nlu.fallback.IntentFallback (none by default)
 
@@ -206,7 +234,8 @@ class Matcher:
         """Map one token onto the vocabulary (or keep it)."""
         if tok in self._snap_cache:
             return self._snap_cache[tok]
-        if tok in self._vocab_ph or tok in STOPWORDS or tok in NUMBER_WORDS or tok.isdigit() or len(tok) < 2:
+        if tok in self._vocab_ph or tok in STOPWORDS or tok in NUMBER_WORDS or tok.isdigit() or len(tok) < 2 \
+                or tok in self.topic_words:
             res = (tok, 1.0)
         elif len(tok) > MAX_SNAP_LEN:
             res = (tok, 1.0)  # far longer than any word Buddy knows: nothing to compare it with
@@ -236,7 +265,7 @@ class Matcher:
     def is_known(self, tok: str) -> bool:
         """A word Buddy should take as heard: its own vocabulary, numbers or everyday English."""
         return (tok in self._vocab_ph or tok in STOPWORDS or tok in NUMBER_WORDS or tok.isdigit()
-                or is_common_word(tok))
+                or tok in self.topic_words or is_common_word(tok))
 
     def canonicalize(self, tokens: list[str], aggressive: bool = True) -> tuple[list[str], float]:
         """Snap tokens onto the vocabulary.  aggressive=False keeps every known word as it is."""
@@ -279,8 +308,10 @@ class Matcher:
             i += 1
         return out, conf, heard
 
-    def best_title(self, toks: list[str], kinds=("poem", "story")) -> tuple[str | None, str | None, float]:
-        """Soft match of multi-word titles/aliases against the utterance."""
+    def best_title(self, toks: list[str], kinds=("poem", "story"),
+                   min_words: int = 1) -> tuple[str | None, str | None, float]:
+        """Soft match of multi-word titles/aliases against the utterance.
+        min_words: ignore aliases with fewer different words than this."""
         content = [t for t in toks if t not in STOPWORDS or t in ("little", "big", "one", "ten")]
         if not content:
             return None, None, 0.0
@@ -289,7 +320,7 @@ class Matcher:
             if kind not in kinds:
                 continue
             words = [w for w in alias.split() if w not in TITLE_STOP]
-            if not words:
+            if not words or len(set(words)) < min_words:
                 continue
             total = 0.0
             for w in words:
@@ -310,6 +341,17 @@ class Matcher:
             if bi in self.animal_by_name:
                 return self.animal_by_name[bi]
         return None
+
+    def find_topic(self, toks: list[str]) -> tuple[str | None, str | None]:
+        """A topic Buddy knows about, and the word(s) that named it ("solar system", "moon")."""
+        for i in range(len(toks) - 1):
+            bi = toks[i] + " " + toks[i + 1]
+            if bi in self.topic_by_name:
+                return self.topic_by_name[bi], bi
+        for t in toks:
+            if t in self.topic_by_name:
+                return self.topic_by_name[t], t
+        return None, None
 
     def find_animal_soft(self, raw: list[str]) -> str | None:
         """Slot-directed search: the child asked for a *sound*, so an animal name is expected.
@@ -428,7 +470,7 @@ class Matcher:
         # ("tolours" is plainly "colours"), but not when the rest of the utterance made no sense
         # either: then the keyword is an artefact of the snapper, not something that was said.
         # "florp bimble wug" used to recite the days of the week (finding M4).
-        _known = set(self._vocab_ph) | self.body_words | NUMBER_WORDS
+        _known = set(self._vocab_ph) | self.body_words | NUMBER_WORDS | self.topic_words
         _kw = [t for t in toks if t in self._vocab_ph]
         _unresolved = [t for t in toks if len(t) > 1 and t not in _known and t not in STOPWORDS
                        and not t.isdigit()]
@@ -437,8 +479,12 @@ class Matcher:
         guessed_only = (bool(_kw) and bool(_unresolved)
                         and max(heard.get(t, 1.0) for t in _kw) < self.vocab_threshold)
 
+        # "why is the moon made of cheese": a "why" question is never a request for an activity,
+        # so a keyword Buddy only guessed at ("cheese" -> "jokes") cannot turn it into one.
+        why_guess = raw[0] == "why" and bool(_kw) and min(heard.get(t, 1.0) for t in _kw) < self.vocab_threshold
+
         def pick(cs):
-            if guessed_only:
+            if guessed_only or why_guess:
                 cs = [c for c in cs if c[2].name not in KEYWORD_INTENTS]
             if not cs:
                 return Intent("unknown", {}, conf, toks, 0.0)
@@ -544,12 +590,25 @@ class Matcher:
         # ---- lessons
         if s & {"color", "colors", "colour", "colours"}:
             thing = next((t for t in toks if t in {f for f, _ in self.content.lessons["fruit_colors"]}), None)
+            asked_about = [t for t in raw if t not in STOPWORDS and t not in self.color_names
+                           and t not in {"color", "colors", "colour", "colours", "favourite", "favorite"}]
             if thing and ("what" in raw or "which" in raw):
                 add(0.92, "color_of", thing=thing)
+            elif is_question and asked_about and not s & {"learn", "teach"}:
+                # "what colour is the sun": a question about something Buddy has no colour for.
+                # Reciting every colour does not answer it (the FAQ or "I don't know" will).
+                add(0.3, "colors")
             else:
                 add(0.88, "colors")
-        if s & {"shape", "shapes"} or (s & self.shape_names and s & {"what", "teach", "learn", "tell"}):
-            add(0.88, "shapes", shape=next((t for t in toks if t in self.shape_names), None))
+        if s & {"shape", "shapes"} or (s & (self.shape_names - AMBIGUOUS_SHAPES)
+                                        and s & {"what", "teach", "learn", "tell"}):
+            shape = next((t for t in toks if t in self.shape_names), None)
+            asked_about = [t for t in raw if t not in STOPWORDS and t not in self.shape_names
+                           and t not in {"shape", "shapes"}]
+            if not shape and is_question and asked_about and not s & {"learn", "teach"}:
+                add(0.3, "shapes")  # "what shape is the moon": not answered by reciting every shape
+            else:
+                add(0.88, "shapes", shape=shape)
         if "body" in s or re.search(r" body parts? ", joined):
             add(0.88, "body")
         elif s & self.body_words and clearly(self.body_words) >= 0.99 \
@@ -572,6 +631,9 @@ class Matcher:
                 add(0.88, "opposites")
 
         # ---- animals
+        # a story or poem title said in full ("thirsty crow", "hello moon") - see the end of _decide
+        fkind, ftid, fscore = self.best_title(toks, min_words=2)
+        full_title = bool(fkind) and fscore >= 0.9 and not is_question
         animal = self.find_animal(toks)
         sound_cue = s & {"sound", "sounds", "noise"}
         if not animal and sound_cue and not s & {"letter", "letters", "phonics", "animal", "animals"}:
@@ -580,6 +642,9 @@ class Matcher:
                 add(0.85, "animal_sound", animal=soft)
         if animal and re.search(r" (tell me )?about | facts? ", joined) and not sound_cue and not s & CONTENT_WORDS:
             add(0.9, "animal_fact", animal=animal)  # (not "a story about a lion")
+        elif animal and clearly(self.animal_by_name) >= 0.99 \
+                and re.search(r"^ (what|who) (is|are) (a |an |the )?\w+ $", joined):
+            add(0.9, "animal_fact", animal=animal)  # "what is a tiger"
         if animal and (sound_cue or re.search(r" (what|how) (does|do|is) (the |a )?\w+ (say|saying|go|going) | says? ",
                                               joined)):
             add(0.93, "animal_sound", animal=animal)
@@ -587,11 +652,33 @@ class Matcher:
             add(0.9, "animal_sound", animal=animal)  # "how does a dog bark", "make the lion roar"
         elif s & {"animal", "animals"}:
             add(0.85, "animal_sound", animal=animal)
-        elif animal and n <= 3 and clearly(self.animal_by_name) >= 0.99:
+        elif animal and n <= 3 and clearly(self.animal_by_name) >= 0.99 and not full_title:
             # just "monkey!" (beats the poem/story title match).  Only when the name was said as
             # it is: a guessed-at name turned "order a pizza" into a horse and "abra ka dabra"
             # into a snake (finding M4).
             add(0.82, "animal_sound", animal=animal)
+
+        # ---- things Buddy knows about: "tell me about the moon", "what is a volcano", "stars!"
+        # A "why / how / where / when" question is NOT answered with a general fact (that would
+        # answer a question that was not asked): those go to the FAQ, or Buddy says it doesn't know.
+        topic, tword = self.find_topic(toks)
+        if topic and not s & (STORY_WORDS | POEM_WORDS | SONG_WORDS | {"shape", "shapes"}) \
+                and raw[0] not in ("why", "how", "where", "when") and "wonder" not in raw:
+            tw = tword.split()
+            sure = min(heard.get(w, 1.0) for w in tw)
+            others = [t for t in toks if t not in STOPWORDS and t not in tw
+                      and t not in {"tell", "teach", "talk", "learn", "fact", "facts", "explain", "something",
+                                    "favourite", "favorite", "the"}]
+            if sure >= self.vocab_threshold and re.search(
+                    r" (tell|teach|talk|know|learn|explain|facts?|something) .*about ", joined):
+                add(0.9, "topic", id=topic)
+            elif sure >= self.vocab_threshold and re.search(
+                    r"^ (what|who) (is|are|was|were) (a |an |the )?" + re.escape(tword) + " $", joined):
+                add(0.9, "topic", id=topic)
+            elif not others and sure >= 0.99 and n <= 5:
+                add(0.8, "topic", id=topic)  # just "stars!", "the moon", "i like trains"
+        if CANT_DO.search(joined) and not s & (STORY_WORDS | POEM_WORDS):
+            add(0.9, "cant_do")
 
         # ---- wellbeing, manners
         if s & {"breathe", "breathing", "calm", "relax"}:
@@ -601,6 +688,8 @@ class Matcher:
         feel = self._feeling(raw, s)
         if feel:
             add(0.88, "feeling", mood=feel)
+        if set(raw) & HURT_WORDS:
+            add(0.9, "feeling", mood="hurt")
 
         # ---- small talk
         if re.search(r" (what is|tell me) your name | who are you ", joined):
@@ -611,8 +700,9 @@ class Matcher:
             add(0.9, "how_are_you")
         if re.search(r" i love you ", joined):
             add(0.9, "love")
-        if s & {"thank", "thanks"}:
-            add(0.85, "thanks")
+        if s & {"thank", "thanks"} and (clearly({"thank", "thanks"}) >= self.vocab_threshold
+                                        or "you" in raw or n <= 2):
+            add(0.85, "thanks")  # (not "my dog is called max": "max" only resembles "thanks")
         if "sorry" in s:
             add(0.8, "sorry")
         if "morning" in s and "good" in raw:
@@ -626,9 +716,11 @@ class Matcher:
 
         # ---- open "why / how / where / when" questions -> small FAQ or curiosity response
         if is_question:
-            faq = self.match_faq(raw)
+            faq, faq_score = self.match_faq_scored(raw)
             if faq is not None:
-                add(0.87, "faq", index=faq)  # lessons (e.g. "what colour is the sky") answer first
+                # lessons (e.g. "what colour is the sky") answer first - unless the question is,
+                # word for word, one Buddy has its own answer to ("what is your favourite colour")
+                add(0.89 if faq_score >= 0.99 else 0.87, "faq", index=faq)
             elif raw[0] in ("why", "how", "where", "when") or "wonder" in raw:
                 add(0.4, "curiosity")
 
@@ -637,7 +729,7 @@ class Matcher:
         if raw[0] in ("why", "how", "where", "when") or "wonder" in raw:
             return pick(cands)
         kind, tid, score = self.best_title(toks)
-        topic = self._topic(toks)
+        topic = self._topic(toks) or [t for t in toks if t in self._title_words] or None
         if s & STORY_WORDS:
             sid = tid if kind == "story" and score >= 0.8 else None
             add(0.9 * clearly(STORY_WORDS), "story", id=sid, topic=None if sid else topic)
@@ -647,12 +739,25 @@ class Matcher:
         if s & SONG_WORDS:
             pid = tid if kind == "poem" and score >= 0.8 else None
             add(0.9 * clearly(SONG_WORDS), "song", id=pid, topic=None if pid else topic)
-        if kind and score >= 0.9 and not is_question:
-            add(0.8, kind, id=tid)
+        # A title said on its own ("the thirsty crow", "hello moon") starts that story or poem.
+        # Only a title of two or more different words: one word ("stars", "moon", "train") is a
+        # topic, not a request for a poem, and used to start one when the child wanted to know
+        # about stars.
+        if full_title:
+            add(0.8, fkind, id=ftid)
+        if not s & (STORY_WORDS | POEM_WORDS | SONG_WORDS) and re.search(
+                r" (tell|teach|talk|know|learn|explain|facts?) (\w+ )?about ", joined):
+            add(0.45, "curiosity")  # "tell me about dinosaurs": heard fine, Buddy just doesn't know
         if s & {"teach", "learn"}:
             add(0.5, "help")
         if is_question:
             add(0.35, "curiosity")
+        elif n >= 3 and raw[0] in ("i", "my", "we", "our", "today", "the") \
+                and sum(not self.is_known(t) for t in raw) <= (1 if n >= 4 else 0):
+            # A plain sentence made of real words ("i have a dog", "my name is riya"): Buddy heard
+            # it, so "my ears missed that" would be wrong.  Gibberish never gets here: every word
+            # must be real English, except one (a name: "my dog is called max") in a longer sentence.
+            add(0.3, "chat")
 
         return pick(cands)
 
@@ -674,12 +779,21 @@ class Matcher:
         return None
 
     def match_faq(self, raw: list[str]) -> int | None:
+        return self.match_faq_scored(raw)[0]
+
+    def match_faq_scored(self, raw: list[str]) -> tuple[int | None, float]:
         content = [t for t in raw if t not in STOPWORDS or t in ("why", "how", "where")]
         best, best_s = None, 0.0
         for i, item in enumerate(self.content.talk["faq"]):
             for q in item["q"]:
                 qw = [w for w in normalize(q) if w not in STOPWORDS or w in ("why", "how", "where")]
                 if not qw:
+                    if normalize(q) == raw:
+                        return i, 1.0  # all small words ("can you see me"): only word for word
+                    continue
+                if len(qw) == 1 and normalize(q) != raw:
+                    # One key word is too little to go on: "who made you" would also answer
+                    # "why is the moon made of cheese".  Such questions match only word for word.
                     continue
                 hit = sum(max((1.0 if w == t else self.phon.word_similarity(t, w)) for t in content or [""])
                           for w in qw) / len(qw)
@@ -687,7 +801,7 @@ class Matcher:
                 sc = hit - extra
                 if sc > best_s:
                     best, best_s = i, sc
-        return best if best_s >= 0.85 else None
+        return (best, best_s) if best_s >= 0.85 else (None, 0.0)
 
     # ----------------------------------------------------------- answer matching
     def matches_answer(self, text: str, answers: list[str | int]) -> bool:

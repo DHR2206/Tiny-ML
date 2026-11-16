@@ -40,7 +40,7 @@ class Brain:
         self.matcher.fallback = load_fallback(cfg["nlu"].get("fallback"))
         self.wake = WakeMatcher(cfg["wake"]["phrases"], self.matcher.phon, cfg["wake"]["threshold"])
         self.wake.validator = lambda rest: bool(rest) and self.matcher.parse(rest).name not in (
-            "unknown", "none", "curiosity")
+            "unknown", "none", "curiosity", "chat")  # (a plain sentence is not a request)
         start_level = 1 if cfg.child_age <= 4 else 2 if cfg.child_age <= 6 else 3
         self.progress = progress or Progress(cfg.data_dir / "progress.db", start_level=start_level)
         self.skills = Skills(self.content, self.matcher, self.progress, self.rng)
@@ -90,7 +90,8 @@ class Brain:
     def follow_up(self, text: str) -> Optional[Response]:
         """Speech in the listening window after a task.  None = not meant for Buddy (ignored)."""
         intent = self.matcher.parse(text)
-        if intent.name in ("unknown", "none") and not (self.offer and (self.matcher.is_yes(text)
+        # "chat" (a plain sentence, "we went to the park") is background talk here, as before
+        if intent.name in ("unknown", "none", "chat") and not (self.offer and (self.matcher.is_yes(text)
                                                                        or self.matcher.is_no(text))):
             return None
         return self.command(text, intent)

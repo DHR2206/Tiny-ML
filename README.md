@@ -63,7 +63,7 @@ buddy/
   engine.py          real-time loop, conversation session, barge-in, echo guard, mute (core invention 3: privacy)
   records.py         RECORDS (temporary): interaction records for analysis, remove before release (docs/RECORDS.md)
   skills/handlers.py all activities
-  content/*.json     stories, poems, animals, lessons, jokes, FAQ, phrases (editable)
+  content/*.json     stories, poems, animals, lessons, jokes, FAQ, topic facts, phrases (editable; docs/KNOWLEDGE.md)
 tests/               unit + end-to-end tests
 scripts/             installer, model download, systemd service, audio evaluation
 ```

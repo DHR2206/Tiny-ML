@@ -470,7 +470,26 @@ class Skills:
         idx = i.slots.get("index")
         if not isinstance(idx, int) or not 0 <= idx < len(faq):
             return self.do_curiosity(i)  # no question matched ("another one"): keep it honest
+        if faq[idx].get("plain"):  # about Buddy or the child: no "Isn't that amazing?" after it
+            return Response([Say(faq[idx]["a"])])
         return Response([Say(faq[idx]["a"], 0.4), Say("Isn't that amazing?")])
+
+    def do_topic(self, i: Intent) -> Response:
+        """A short fact about something Buddy knows (content/talk.json "topics")."""
+        topics = self.c.talk.get("topics", [])
+        if not topics:
+            return self.do_curiosity(i)
+        tp = next((t for t in topics if t["id"] == i.slots.get("id")), None)
+        if tp is None:  # no topic named ("another one"): a fresh one
+            tp = self.rng.choice(topics)
+        return Response([Say(tp["say"])], meta={"id": tp["id"]})
+
+    def do_chat(self, i: Intent) -> Response:
+        """The child told Buddy something ("i have a dog"): heard fine, but there is nothing to do."""
+        return Response([Say(self.p("chat_ack"))])
+
+    def do_cant_do(self, i: Intent) -> Response:
+        return Response([Say(self.p("cant_do"))])
 
     def do_curiosity(self, i: Intent) -> Response:
         return Response([Say(self.p("curiosity"))])
@@ -540,6 +559,8 @@ class Skills:
             out.update(f"{x} {rd['say']}" for x in c.phrases["reveal"] + ["The answer is"])
         for f in c.talk["faq"]:
             out.add(f["a"])
+        for tp in c.talk.get("topics", []):
+            out.add(tp["say"])
         out.add("Isn't that amazing?")
         for qs in self.bank.values():
             for q in qs:

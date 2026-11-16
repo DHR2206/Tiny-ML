@@ -13,6 +13,10 @@
     "That's a super interesting question! Your brain is growing so big and curious. I haven't learned that answer yet. What's your idea? Keep asking questions, always. Questions are like keys that open new doors!",
     "Hmm, great thinking! Scientists start with questions just like yours. I don't know the answer yet, but you can be a question detective! Ask a grown-up, or look in a book together. I think you'll find something amazing!"
   ],
+  "cant_do": ["I can't do that yet. But I can tell you a story, say a poem, count with you, or play a quiz game! What shall we do?",
+              "Oh, I'm not able to do that. I'm a talking and learning buddy! Shall we have a story, a riddle, or a quiz?"],
+  "chat_ack": ["Thank you for telling me! I'm still learning to chat. Would you like a story, a poem, or a quiz?",
+               "I like hearing about you! I can't chat much yet, but I can tell a story, say a poem, or play a game. What shall we do?"],
   "not_understood": ["Hmm, I didn't quite catch that. Can you say it again?", "Oops, my ears missed that. One more time, please?"],
   "not_understood_help": ["I'm still learning to understand. You can say things like: tell me a story, animal sounds, count to twenty, or let's play a quiz!"],
   "help": ["I can tell stories, say poems, sing the alphabet, teach letter sounds, count numbers, make animal sounds, teach colours and shapes, tell jokes and riddles, and play quiz games! You can also ask me to pause, repeat, or stop. So, what would you like?"],
@@ -63,6 +67,7 @@
   "feel_sad": ["I'm sorry you feel sad. It's okay to feel sad sometimes. A hug from a grown-up can help. Would you like to take three big breaths with me? Just say: breathing."],
   "feel_angry": ["It's okay to feel angry. Let's calm our body. Breathe in slowly, and breathe out slowly. You can also tell a grown-up how you feel."],
   "feel_scared": ["You are safe. It's okay to feel scared. Please go and find a grown-up you trust, and tell them how you feel. They can help you."],
+  "feel_hurt": ["Oh no! If you are hurt or not feeling well, please tell a grown-up right away. They can help you feel better."],
   "feel_happy": ["Yay! I'm so happy that you're happy! Happy feelings are the best."],
   "feel_bored": ["Bored? Let's fix that! How about a riddle, a story, or a quiz game?"],
   "breathing": ["Let's breathe together. Sit comfortably.",

@@ -1,5 +1,5 @@
 {
- "_note": "Original stories and folk tales retold in Buddy's own words. Each paragraph is rendered as one audio clip.",
+ "_note": "Original stories and folk tales retold in Buddy's own words. Each paragraph is rendered as one audio clip. Kept short on purpose (about 30 seconds each).",
  "stories": [
   {
    "id": "thirsty_crow",
@@ -11,11 +11,9 @@
     "clever crow"
    ],
    "paragraphs": [
-    "Once upon a time, on a very hot day, a crow was flying in the sky. He was so thirsty! Caw, caw, I need water, he said.",
-    "He looked and looked, and at last he saw a pot in a garden. But oh no! There was only a little water at the very bottom, and his beak could not reach it.",
-    "The crow did not give up. He thought and thought. Then he had an idea! He picked up a small pebble and dropped it into the pot. Plop!",
-    "Plop, plop, plop! One by one, he dropped in more pebbles, and slowly, slowly, the water came up higher and higher.",
-    "At last the water was at the top. The crow drank and drank, and he was happy. The end. When we think hard and keep trying, we can solve big problems!"
+    "Once upon a time, on a very hot day, a crow was flying in the sky. He was so thirsty! He found a pot, but the water was right at the bottom, and his beak could not reach it.",
+    "The crow had an idea! He dropped in pebbles, one by one. Plop, plop, plop! Slowly, the water came up to the top.",
+    "The crow drank and drank, and he was happy. The end. When we think hard and keep trying, we can solve big problems!"
    ]
   },
   {
@@ -29,12 +27,9 @@
     "lion and the little mouse"
    ],
    "paragraphs": [
-    "Once upon a time, a big lion was sleeping in the forest. A tiny mouse came running and ran right over the lion's nose!",
-    "The lion woke up and caught the mouse in his big paw. Please let me go, squeaked the mouse. One day I will help you too!",
-    "The lion laughed. How can a tiny mouse help a big lion like me? But he was kind, and he let the mouse go.",
-    "A few days later, the lion got stuck in a hunter's net. He roared and roared, but he could not get out.",
-    "The little mouse heard him. She came running and nibbled the ropes with her sharp teeth. Nibble, nibble, snip! The lion was free!",
-    "Thank you, little friend, said the lion. Now they were best friends. The end. Even small friends can do big things!"
+    "Once upon a time, a big lion caught a tiny mouse. Please let me go, squeaked the mouse. One day I will help you! The lion laughed, but he let her go.",
+    "Soon after, the lion got stuck in a hunter's net. The little mouse came running and nibbled the ropes. Nibble, nibble, snip! The lion was free!",
+    "Now they were best friends. The end. Even small friends can do big things!"
    ]
   },
   {
@@ -49,12 +44,9 @@
     "turtle story"
    ],
    "paragraphs": [
-    "Once upon a time, there was a fast hare who liked to show off. I am the fastest in the whole forest, he said.",
-    "A slow tortoise said, Let us have a race. All the animals laughed. The hare said, Ha ha, of course I will win!",
-    "The race began. Zoom! The hare ran far ahead. He looked back and could not even see the tortoise. I have lots of time, he said, and he lay down under a tree and fell asleep.",
-    "The tortoise kept walking. Step, step, step. Slow and steady, he did not stop.",
-    "When the hare woke up, he ran as fast as he could. But the tortoise was already at the finish line! All the animals cheered.",
-    "The end. Slow and steady, and never giving up, wins the race!"
+    "Once upon a time, a fast hare laughed at a slow tortoise. So they had a race! Zoom! The hare ran far ahead.",
+    "I have lots of time, said the hare, and he fell asleep under a tree. The tortoise kept walking. Step, step, step.",
+    "When the hare woke up, the tortoise was already at the finish line! The end. Slow and steady, and never giving up, wins the race!"
    ]
   },
   {
@@ -68,12 +60,9 @@
     "jamun tree"
    ],
    "paragraphs": [
-    "Once upon a time, a monkey lived in a jamun tree next to a river. Every day he shared sweet jamun fruits with his friend, the crocodile.",
-    "One day the crocodile said, My wife wants to eat your heart! Come to my house on my back. The monkey did not know this, and he climbed on.",
-    "In the middle of the river, the crocodile told him the truth. The monkey was scared, but he stayed calm and thought quickly.",
-    "Oh dear, said the monkey. I left my heart at home in the jamun tree! Take me back and I will get it.",
-    "The silly crocodile swam back. The monkey jumped up into the tree and was safe. Now I know you are not a true friend, he said.",
-    "The end. When we are in trouble, staying calm helps us think of a clever idea!"
+    "Once upon a time, a monkey shared sweet jamun fruits with his friend, the crocodile. One day the crocodile said, Ride on my back to my house. My wife wants to eat your heart!",
+    "The monkey stayed calm. Oh dear, he said, I left my heart in the jamun tree! Take me back and I will get it.",
+    "The silly crocodile swam back, and the monkey jumped up into the tree, safe. The end. Staying calm helps us think of a clever idea!"
    ]
   },
   {
@@ -86,11 +75,9 @@
     "grasshopper story"
    ],
    "paragraphs": [
-    "In the warm summer, a little ant worked all day. She carried grains of food, one by one, to her home.",
-    "A grasshopper was singing and playing. Come and play with me, he said. I am saving food for the cold winter, said the ant.",
-    "Soon winter came. It was cold and snowy, and there was no food outside. The grasshopper was hungry and shivering.",
-    "He knocked on the ant's door. The kind ant shared her food and said, Next summer, let us work and play together!",
-    "The grasshopper said thank you, and he learned to get ready for tomorrow. The end. It is good to play, and it is good to plan ahead too!"
+    "All summer, a little ant carried food to her home, while a grasshopper sang and played.",
+    "Then cold winter came, and there was no food outside. The hungry grasshopper knocked on the ant's door, and the kind ant shared her food.",
+    "The grasshopper learned to get ready for tomorrow. The end. It is good to play, and it is good to plan ahead too!"
    ]
   },
   {
@@ -104,11 +91,8 @@
     "bunny story"
    ],
    "paragraphs": [
-    "Once upon a time, a greedy lion scared all the animals in the forest. Every day, he wanted one animal for his dinner.",
-    "One day it was the little rabbit's turn. The rabbit walked very slowly, and he thought of a plan.",
-    "Why are you so late? roared the lion. The rabbit said, Sorry! Another lion stopped me. He says he is the king of this forest!",
-    "Show me this other lion! roared the lion. The rabbit took him to a deep well. Look, he lives down there.",
-    "The lion looked in the water and saw his own reflection. He thought it was another lion and jumped in, splash! He could never scare anyone again.",
+    "Once upon a time, a greedy lion scared all the animals in the forest. One day, a little rabbit said, Another lion lives here, and he says he is the king!",
+    "Show me! roared the lion. The rabbit took him to a deep well. The lion saw his own reflection in the water. He thought it was another lion, and jumped in. Splash!",
     "All the animals cheered for the little rabbit. The end. Using our brain is better than being big and strong!"
    ]
   },
@@ -122,10 +106,9 @@
     "shepherd boy"
    ],
    "paragraphs": [
-    "Once there was a shepherd boy who looked after sheep on a hill. One day he was bored, so he shouted, Wolf! Wolf! A wolf is coming!",
-    "The villagers came running to help. But there was no wolf. The boy laughed. He did the same trick again the next day.",
-    "Then one evening, a real wolf came! Wolf! Wolf! shouted the boy. But this time, nobody came. They thought it was another trick.",
-    "The boy was sad, and he learned an important lesson. The end. When we always tell the truth, people will believe us when we need help."
+    "Once there was a shepherd boy who shouted, Wolf! Wolf! just for fun. The villagers came running, but there was no wolf.",
+    "Then one day, a real wolf came! Wolf! Wolf! shouted the boy. But this time nobody came, because they thought it was another trick.",
+    "The end. When we always tell the truth, people will believe us when we need help."
    ]
   },
   {
@@ -139,11 +122,9 @@
     "tree story"
    ],
    "paragraphs": [
-    "Deep in the soil, a tiny seed was sleeping. It was dark and quiet. I am so small, said the seed. What can I do?",
-    "Then the rain came. Drip, drop, drip. The seed drank the water, and it began to wake up.",
-    "Next the sun came out and warmed the soil. The seed pushed and pushed, and a little green shoot popped up. Hello, world!",
-    "Every day the shoot grew a little taller, with more leaves. Birds came to sit on it, and children played in its shade.",
-    "One day, the tiny seed had become a big, strong mango tree, full of sweet mangoes to share. The end. Little by little, every day, we grow too!"
+    "Deep in the soil, a tiny seed was sleeping. I am so small, said the seed. What can I do?",
+    "The rain gave it water, and the sun kept it warm. Pop! A little green shoot came up, and every day it grew a little taller.",
+    "One day, the tiny seed had become a big mango tree, full of sweet mangoes to share. The end. Little by little, every day, we grow too!"
    ]
   },
   {
@@ -157,10 +138,8 @@
    ],
    "paragraphs": [
     "High up in the night sky lived a little star named Tara. One night, she played too far away and got lost.",
-    "Tara felt scared. She asked the moon, Can you help me find my family? The moon smiled. Follow the fireflies, they know the way.",
-    "The fireflies blinked their tiny lights. This way, Tara! She followed them over the hills and across the river.",
-    "Soon she saw her family, twinkling and waiting for her. Everyone hugged, and Tara twinkled brighter than ever.",
-    "The end. When we feel lost or scared, it is good to ask for help. There are always helpers around us."
+    "Tara asked the moon for help. Follow the fireflies, said the moon. The fireflies blinked their tiny lights, and led her all the way home.",
+    "Her family was waiting, and Tara twinkled brighter than ever. The end. When we feel lost or scared, it is good to ask for help."
    ]
   },
   {
@@ -173,11 +152,9 @@
     "chintu the baby elephant"
    ],
    "paragraphs": [
-    "Chintu was a baby elephant who wanted to help everyone. But he was still small, and sometimes he dropped things.",
-    "One day, a kitten got stuck high up in a tree. Meow, meow! The monkeys tried, the birds tried, but nobody could reach.",
-    "Chintu thought, I am small, but my trunk is long! He stood on a rock, stretched his trunk up, up, up, and the kitten climbed down safely.",
-    "Everyone cheered. Hooray for Chintu! Chintu felt so proud and happy.",
-    "The end. Everyone is good at something. What are you good at?"
+    "Chintu was a baby elephant who wanted to help everyone, but he was still very small.",
+    "One day, a kitten got stuck high up in a tree. Chintu thought, I am small, but my trunk is long! He stretched it up, up, up, and the kitten climbed down safely.",
+    "Everyone cheered. Hooray for Chintu! The end. Everyone is good at something. What are you good at?"
    ]
   },
   {
@@ -190,11 +167,9 @@
     "kind river"
    ],
    "paragraphs": [
-    "A happy river flowed through the mountains, singing, splash, splash, splash.",
-    "It gave water to the thirsty deer, to the fields of rice, and to the children who played on its banks.",
-    "One hot summer, the river became very thin. The people said, Let us take care of our river! They stopped throwing rubbish and planted trees all around.",
-    "When the rains came, the river was big and happy again, and it kept sharing its water with everyone.",
-    "The end. When we take care of nature, nature takes care of us."
+    "A happy river gave water to the deer, to the fields, and to the children who played beside it.",
+    "One hot summer, the river became very thin. So the people stopped throwing rubbish in it, and planted trees all around.",
+    "When the rains came, the river was big and happy again. The end. When we take care of nature, nature takes care of us."
    ]
   }
  ]

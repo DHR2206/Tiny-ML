@@ -192,9 +192,11 @@ class TestGibberishAndInvalidInput(unittest.TestCase):
             self.assertTrue(said(r).strip(), text)
             self.assertIn(r.intent, ("curiosity", "faq", "unknown"), (text, r.intent))
 
-    @unittest.expectedFailure
     def test_known_residual_a_vocabulary_word_can_still_carry_a_question(self):
-        """Remaining M4 case, recorded rather than hidden: when a question contains a word that
+        """FIXED in v0.5 (was @expectedFailure): a "why" question is no longer turned into an
+        activity by a guessed keyword, and a one-word FAQ match needs the exact question.
+
+        Original note - remaining M4 case, recorded rather than hidden: when a question contains a word that
         *is* in Buddy's vocabulary ("moon" is in a poem title), a second word guessed into a
         keyword ("cheese" -> "jokes") can still choose the activity.  Separating this from a real
         child pronunciation needs a different model (the nlu/fallback.py hook), which is a design
